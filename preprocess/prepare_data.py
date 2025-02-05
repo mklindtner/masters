@@ -8,7 +8,7 @@ from torch.utils.data import Subset
 import numpy as np
 
 
-def load_distillation_data(data_dir="./data", batch_size=64, save=True):
+def MNIST_distillation_data(data_dir="./data", batch_size=64, save=True):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
@@ -22,10 +22,50 @@ def load_distillation_data(data_dir="./data", batch_size=64, save=True):
     return train_loader, test_loader
 
 
-def load_teacher_data():
-    raise ValueError("Not implemented yet")
+def MNIST_teacher_data(sub=60000):
+    #Test that the data is like tehy specified in the paper
+    train_loader = torch.load(f"./data/MNIST/manipulated/manipulated_train_loader_{sub}.pth")
+    test_loader = torch.load(f"./data/MNIST/manipulated/manipulated_train_loader_{sub}.pth")
+    return train_loader, test_loader
 
-def data_preprocess(data_dir="./data", batch_size=64, save=True, sub = 60000):
+def CIFAR10_teacher_data(sub=50000):
+    
+    train_loader = torch.load(f"./data/CIFAR10/manipulated/manipulated_train_loader_{sub}.pth")
+    test_loader = torch.load(f"./data/CIFAR10/manipulated/manipulated_train_loader_{sub}.pth")
+
+
+def data_preprocess_cifar10(data_dir="./data",batch_size=64,sub=60000, save = True):
+    #Subsampling for train, always use full dataset for 
+    allowed_sizes = {10000, 20000, 50000}
+    if sub not in allowed_sizes:
+        raise ValueError(f"Must specifiy size of {allowed_sizes} for subsamples")
+    
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,))
+    ])
+    train_dataset = datasets.CIFAR10(data_dir, train=True, download=True,transform=transform)
+    test_dataset = datasets.CIFAR10(data_dir, train=False, download=True, transform=transform)
+    
+    indices = np.random.choice(len(train_dataset), sub, replace=False)  # Random indices
+    train_dataset_sub = Subset(train_dataset, indices)  # Create a subset
+
+    # Data loader
+    train_loader = DataLoader(train_dataset_sub, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)  
+
+    if save:
+        # Save the loaders for reuse
+        os.makedirs(data_dir, exist_ok=True)
+        torch.save(train_loader, os.path.join(data_dir, f"CIFAR10/manipulated/manipulated_train_loader_{sub}.pth"))
+        torch.save(test_loader, os.path.join(data_dir, f"CIFAR10/manipulated/manipulated_test_loader_{sub}.pth"))
+        print(f"Data saved at {data_dir}")
+
+    return train_loader,test_loader 
+
+
+
+def data_preprocess_mnist(data_dir="./data", batch_size=64, save=True, sub = 60000):
     # Define transformations for MNIST
     # This might be unnecessary and take a large amount of time
     transform = transforms.Compose([
@@ -89,8 +129,8 @@ def data_preprocess(data_dir="./data", batch_size=64, save=True, sub = 60000):
     if save:
         # Save the loaders for reuse
         os.makedirs(data_dir, exist_ok=True)
-        torch.save(train_loader, os.path.join(data_dir, f"manipulated_train_loader_{sub}.pth"))
-        torch.save(test_loader, os.path.join(data_dir, f"manipulated_test_loader_{sub}.pth"))
+        torch.save(train_loader, os.path.join(data_dir, f"MNIST/manipulated/manipulated_train_loader_{sub}.pth"))
+        torch.save(test_loader, os.path.join(data_dir, f"MNIST/manipulated/manipulated_test_loader_{sub}.pth"))
         print(f"Data saved at {data_dir}")
 
 
@@ -100,5 +140,6 @@ def data_preprocess(data_dir="./data", batch_size=64, save=True, sub = 60000):
 
 
 if __name__ == "__main__":
-    data_preprocess()
-    load_teacher_data()
+    # data_preprocess_mnist(sub=60000)
+    # MNIST_teacher_data(sub=20000)
+    data_preprocess_cifar10(sub=20000)
