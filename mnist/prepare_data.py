@@ -25,6 +25,8 @@ def load_data(data_dir="./data", batch_size=64, save=True):
         torch.save(test_loader, os.path.join(data_dir, "test_loader.pth"))
         print(f"Data saved at {data_dir}")
 
+
+
     return train_loader, test_loader
 
 if __name__ == "__main__":

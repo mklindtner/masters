@@ -4,8 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 from models import StudentModel, TeacherModel
 from prepare_data import load_data
+from hyperparams import device
 
-def train_model(train_loader, test_loader, epochs=10, lr=0.001, device="cuda" if torch.cuda.is_available() else "cpu"):
+def train_model(train_loader, test_loader, epochs=10, lr=0.001):
     # Initialize teacher and student models
     teacher_model = TeacherModel().to(device)
     student_model = StudentModel().to(device)
