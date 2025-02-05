@@ -8,8 +8,19 @@ from torch.utils.data import Subset
 import numpy as np
 
 
-def load_distillation_data(ddata_dir="./data", batch_size=64, save=True):
-    raise ValueError("Not implemented yet")
+def load_distillation_data(data_dir="./data", batch_size=64, save=True):
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,))
+    ])
+    train_dataset = datasets.MNIST(data_dir, train=True, download=True, transform=transform)
+    test_dataset = datasets.MNIST(data_dir, train=False, download=True, transform=transform)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)    
+
+    return train_loader, test_loader
+
 
 def load_teacher_data():
     raise ValueError("Not implemented yet")
@@ -78,8 +89,8 @@ def data_preprocess(data_dir="./data", batch_size=64, save=True, sub = 60000):
     if save:
         # Save the loaders for reuse
         os.makedirs(data_dir, exist_ok=True)
-        torch.save(train_loader, os.path.join(data_dir, f"train_loader_{sub}.pth"))
-        torch.save(test_loader, os.path.join(data_dir, f"test_loader_{sub}.pth"))
+        torch.save(train_loader, os.path.join(data_dir, f"manipulated_train_loader_{sub}.pth"))
+        torch.save(test_loader, os.path.join(data_dir, f"manipulated_test_loader_{sub}.pth"))
         print(f"Data saved at {data_dir}")
 
 
