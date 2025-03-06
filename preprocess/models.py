@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class TeacherFCNNMNIST(nn.Module):
     def __init__(self):
         super(TeacherFCNNMNIST, self).__init__()
@@ -17,9 +16,9 @@ class TeacherFCNNMNIST(nn.Module):
         x = self.fc3(x)  # No activation, since we'll use CrossEntropyLoss
         return x
 
-class StudentFCNN(nn.Module):
+class StudentFCNNMNIST(nn.Module):
     def __init__(self, K1=1, K2=1):
-        super(StudentFCNN, self).__init__()
+        super(StudentFCNNMNIST, self).__init__()
         self.fc1 = nn.Linear(784, int(400 * K1))  
         self.fc2 = nn.Linear(int(400 * K1), int(400 * K2))  
         self.fc3 = nn.Linear(int(400 * K2), 10)  

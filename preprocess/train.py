@@ -4,7 +4,10 @@ import torch.nn as nn
 import torch.optim as optim
 from models import StudentModel, TeacherModel
 from prepare_data import data_preprocess_mnist
-from hyperparams import device
+from hyperparams import device, epochs
+
+
+    
 
 def train_model(train_loader, test_loader, epochs=10, lr=0.001):
     # Initialize teacher and student models
@@ -49,6 +52,6 @@ def train_model(train_loader, test_loader, epochs=10, lr=0.001):
     print("Training complete. Model saved.")
 
 if __name__ == "__main__":
-    data_dir = "../data"
-    train_loader, test_loader = data_preprocess_mnist(data_dir, save=False)
+    # data_dir = "../data"
+    train_loader, test_loader = data_preprocess_mnist(save=False)
     train_model(train_loader, test_loader)

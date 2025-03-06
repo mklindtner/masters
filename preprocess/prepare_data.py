@@ -8,7 +8,7 @@ from torch.utils.data import Subset
 import numpy as np
 
 
-def MNIST_distillation_data(data_dir="./data", batch_size=64, save=True):
+def MNIST_distillation_data(data_dir="./data", batch_size=64):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
@@ -29,9 +29,9 @@ def MNIST_teacher_data(sub=60000):
     return train_loader, test_loader
 
 def CIFAR10_teacher_data(sub=50000):
-    
     train_loader = torch.load(f"./data/CIFAR10/manipulated/manipulated_train_loader_{sub}.pth")
     test_loader = torch.load(f"./data/CIFAR10/manipulated/manipulated_train_loader_{sub}.pth")
+    return train_loader, test_loader
 
 
 def data_preprocess_cifar10(data_dir="./data",batch_size=64,sub=60000, save = True):
@@ -64,8 +64,7 @@ def data_preprocess_cifar10(data_dir="./data",batch_size=64,sub=60000, save = Tr
     return train_loader,test_loader 
 
 
-
-def data_preprocess_mnist(data_dir="./data", batch_size=64, save=True, sub = 60000):
+def data_preprocess_mnist(data_dir="./data", batch_size=64, save=True, sub = 60000, should_mask=True):
     # Define transformations for MNIST
     # This might be unnecessary and take a large amount of time
     transform = transforms.Compose([
@@ -93,27 +92,28 @@ def data_preprocess_mnist(data_dir="./data", batch_size=64, save=True, sub = 600
 
     #Mask Data
     #We want a random patch of 14x14 and put it to -1
-    random.seed(42)
-    m = 14
-    r = m*m/(28*28) #percentage of image masked
+    if should_mask:
+        random.seed(42)
+        m = 14
+        r = m*m/(28*28) #percentage of image masked
 
-    manipulated_train = []
-    labels = []
-    for images, label in train_loader:
-        
-        rng_row = torch.randint(0,28-m,(1,))
-        rng_col = torch.randint(0,28-m,(1,))
-        for i in range(images.shape[0]):
-            #just to make which image im manipulating clear
-            image = images[i].clone()
-            image[rng_row:rng_row+m,rng_col:rng_col+m] = -1
-            manipulated_train.append(image)
-            labels.append(label[i])
-        #labels.append(label)
-    man_img = torch.stack(manipulated_train)
-    man_lab = torch.stack(labels)
-    man_dataset = TensorDataset(man_img, man_lab)
-    man_train_loader = DataLoader(man_dataset, batch_size=batch_size, shuffle=True)
+        manipulated_train = []
+        labels = []
+        for images, label in train_loader:
+            
+            rng_row = torch.randint(0,28-m,(1,))
+            rng_col = torch.randint(0,28-m,(1,))
+            for i in range(images.shape[0]):
+                #just to make which image im manipulating clear
+                image = images[i].clone()
+                image[rng_row:rng_row+m,rng_col:rng_col+m] = -1
+                manipulated_train.append(image)
+                labels.append(label[i])
+            #labels.append(label)
+        man_img = torch.stack(manipulated_train)
+        man_lab = torch.stack(labels)
+        man_dataset = TensorDataset(man_img, man_lab)
+        train_loader = DataLoader(man_dataset, batch_size=batch_size, shuffle=True)
 
     #Visual test if manipulation was done correct
     # tmp = next(iter(man_train_loader))[0][0].view(28,28)
@@ -135,7 +135,7 @@ def data_preprocess_mnist(data_dir="./data", batch_size=64, save=True, sub = 600
 
 
 
-    return man_train_loader, test_loader
+    return train_loader, test_loader
 
 
 
