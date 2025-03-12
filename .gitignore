@@ -3,3 +3,5 @@ data/*
 __pycache__/*
 mnist/*
 tmp/__pycache__/*
+tmp/__pycache__/
+
