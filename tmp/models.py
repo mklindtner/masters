@@ -42,28 +42,9 @@ class gped2DNormal(BNN):
     def log_prior(self,theta):
         return self.prior.log_prob(theta)
     
-    #Large batch_size of parameters
-    def log_likelihood_plot(self, theta):
-        phi = torch.cat([torch.ones_like(self.x), self.x],dim=1)
-        sigma = 1/self.beta * torch.eye(len(self.x))
-        
-        mu2 = torch.mm(theta, phi.T)
-        likelihood = MultivariateNormal(mu2, covariance_matrix=sigma)
-        log_prob = likelihood.log_prob(self.y.squeeze())
-        return (self.N / self.M)  * log_prob
-
-
     def log_joint_plot(self, theta):
         return (self.log_prior(theta) + self.log_likelihood_plot(theta))
 
-    #batch_size of 1
-    # def log_likelihood(self,theta):
-    #     phi = torch.cat([torch.ones_like(self.x), self.x],dim=1)
-    #     sigma = 1/self.beta * torch.eye(len(self.x))
-
-    #     mu = torch.mv(phi, theta)
-    #     likelihood = MultivariateNormal(mu,covariance_matrix=sigma)
-    #     return (self.N / self.M)  * likelihood.log_prob(self.y.squeeze())
 
     def log_likelihood(self, theta):        
         if theta.dim() == 1:
