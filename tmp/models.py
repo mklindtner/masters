@@ -26,6 +26,9 @@ class gped2DNormal(BNN):
         self.sim = sim
         self.N = len(x)
         self.M = batch_sz
+
+        self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v 
+        self.predict = lambda x, a, b: a + b*x
         
     def _standardize(self):
         x_mean = torch.mean(self.x)
@@ -38,31 +41,47 @@ class gped2DNormal(BNN):
 
     def log_prior(self,theta):
         return self.prior.log_prob(theta)
-
-    def log_likelihood(self,theta):
-        if self.x.dim() == 1:
-            self.x = self.x[:,None] 
-
+    
+    #Large batch_size of parameters
+    def log_likelihood_plot(self, theta):
         phi = torch.cat([torch.ones_like(self.x), self.x],dim=1)
         sigma = 1/self.beta * torch.eye(len(self.x))
-
-        #if matrix of weights and not estiamte single value
-        if not self.sim:
-            mu2 = torch.mm(theta, phi.T)
-            likelihood = MultivariateNormal(mu2, covariance_matrix=sigma)
-            log_prob = likelihood.log_prob(self.y.squeeze())
-            return (self.N / self.M)  * log_prob
         
-        #predict mu
-        mu = torch.mv(phi, theta)
-        likelihood = MultivariateNormal(mu,covariance_matrix=sigma)
-        if self.y.shape[0] == 1:
-            return (self.N / self.M)  * likelihood.log_prob(self.y)
-        return (self.N / self.M)  * likelihood.log_prob(self.y.squeeze())
+        mu2 = torch.mm(theta, phi.T)
+        likelihood = MultivariateNormal(mu2, covariance_matrix=sigma)
+        log_prob = likelihood.log_prob(self.y.squeeze())
+        return (self.N / self.M)  * log_prob
+
+
+    def log_joint_plot(self, theta):
+        return (self.log_prior(theta) + self.log_likelihood_plot(theta))
+
+    #batch_size of 1
+    # def log_likelihood(self,theta):
+    #     phi = torch.cat([torch.ones_like(self.x), self.x],dim=1)
+    #     sigma = 1/self.beta * torch.eye(len(self.x))
+
+    #     mu = torch.mv(phi, theta)
+    #     likelihood = MultivariateNormal(mu,covariance_matrix=sigma)
+    #     return (self.N / self.M)  * likelihood.log_prob(self.y.squeeze())
+
+    def log_likelihood(self, theta):        
+        if theta.dim() == 1:
+            theta = theta[None,:]        
+
+        theta_pred = self.predict(self.x, theta[:,0], theta[:,1])   
+            
+        likelihood = self.log_npdf(self.y, theta_pred, 1/self.beta)
+        ll = torch.sum(likelihood, 0)
+        ll_batch = (self.N / self.M ) * ll 
+        return ll_batch
+        
+
 
     def log_joint(self, theta):
         return (self.log_prior(theta) + self.log_likelihood(theta))
     
+
     def log_joint_gradient(self, theta): 
         # Ensure theta requires gradients
         if not theta.requires_grad:
