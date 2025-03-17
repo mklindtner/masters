@@ -1,9 +1,10 @@
-from models import gped2DNormal, design_matrix,plot_weights, plot_distribution, analytical_gradient, mcmc_ULA
+from models import gped2DNormal, design_matrix, plot_distribution, analytical_gradient, mcmc_ULA, mcmc_MALA, mcmc_SGLD
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
 import matplotlib.pyplot as plt
 import math
+from plotter import plotter
 
 
 #Example week3
@@ -22,37 +23,18 @@ theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
 
 
-algo2D = gped2DNormal(xtrain,ytrain, alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
+algo2D = gped2DNormal(xtrain,ytrain, batch_sz=len(xtrain) ,alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
 
-# #MLE/MAP
+#MLE/MAP
 Phi_train = design_matrix(algo2D.x)
 w_MLE = np.linalg.solve(Phi_train.T@Phi_train, Phi_train.T@algo2D.y).ravel()
 w_MAP = (beta*torch.linalg.solve(alpha*torch.eye(2) + beta*(Phi_train.T@Phi_train), Phi_train.T)@algo2D.y).ravel()
 
-w = mcmc_ULA(algo2D, theta_init=w_MAP, T=10000, lr = 1e-2/10)
-# anal_w, m = analytical_gradient(theta_init, Phi, algo2D.x, beta)
-# print(f"Analytical Gradient\n {anal_w}")
-# print(f"log_joint_gradient-value\n {w}")
-# print(f"difference\n {anal_w - w}")
-# print("breakpoint")
-
-fig, axes = plt.subplots(1, 3, figsize=(18,6))
-axes[2].plot(w[:,1],w[:,0], "ro")
-axes[2].plot(w_MAP[1],w_MAP[0], "bo")
-#plot_weights(axes[1],algo=algo2D, thetas=w, color='g', title='Posterior', visibility=0.75)
+# w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, lr = 2e-2)
+# w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0], requires_grad=True), T=1000)
+w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
 
 algo2D.sim = False
-plot_distribution(axes[0],density_fun=algo2D.log_prior, color='b', label='Prior', title='Prior', visibility=0.25)
-plot_distribution(axes[1],density_fun=algo2D.log_likelihood, color='r', label='likelihood', title='Likelihood', visibility=0.25)
-plot_distribution(axes[2],density_fun=algo2D.log_joint, color='g', label='Posterior', title='Posterior', visibility=0.25)
-
-
-
-
-axes[1].plot(w_MLE[1], w_MLE[0], 'mo', label='MLE estimate')
-axes[1].legend(loc='lower right')
-# axes[2].plot(w_MLE[0], w_MLE[1], 'mo', label='MLE estimate')
-# axes[2].plot(w_MAP[0], w_MAP[1], 'bo', label='MAP/Posterior mean')
-# axes[2].legend(loc='lower right')
-plt.show()
-print("breakpoint")
+plotter(w_SGLD, algo2D, w_MAP, w_MLE)
+# plotter(w_MALA, algo2D, w_MAP, w_MLE)
+# plotter(w_ULA)
