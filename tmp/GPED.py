@@ -23,7 +23,7 @@ theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
 
 
-algo2D = gped2DNormal(xtrain,ytrain, batch_sz=len(xtrain), alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
+algo2D = gped2DNormal(xtrain,ytrain, batch_sz=5, alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
 
 #MLE/MAP
 Phi_train = design_matrix(algo2D.x)

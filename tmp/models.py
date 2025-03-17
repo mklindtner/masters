@@ -26,6 +26,7 @@ class gped2DNormal(BNN):
         self.sim = sim
         self.N = len(x)
         self.M = batch_sz
+        self._standardize()
 
         self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v 
         self.predict = lambda x, a, b: a + b*x
@@ -41,23 +42,29 @@ class gped2DNormal(BNN):
 
     def log_prior(self,theta):
         return self.prior.log_prob(theta)
-    
-    def log_joint_plot(self, theta):
-        return (self.log_prior(theta) + self.log_likelihood_plot(theta))
-
+        
 
     def log_likelihood(self, theta):        
         if theta.dim() == 1:
             theta = theta[None,:]        
 
-        theta_pred = self.predict(self.x, theta[:,0], theta[:,1])   
+        #get batch size
+        idx = torch.randperm(len(self.x))[:self.M]
+        batch_x = self.x[idx]
+        batch_y = self.y[idx]
+
+        if self.sim == False:
+            batch_x = self.x
+            batch_y = self.y
+            self.M = len(self.x)
+        
+        theta_pred = self.predict(batch_x, theta[:,0], theta[:,1])   
             
-        likelihood = self.log_npdf(self.y, theta_pred, 1/self.beta)
+        likelihood = self.log_npdf(batch_y, theta_pred, 1/self.beta) 
         ll = torch.sum(likelihood, 0)
         ll_batch = (self.N / self.M ) * ll 
         return ll_batch
         
-
 
     def log_joint(self, theta):
         return (self.log_prior(theta) + self.log_likelihood(theta))
@@ -153,7 +160,7 @@ def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
             theta.grad.zero_()
 
             print(t)
-            eps = 4/algo.N * (t+1)**(-0.55)
+            eps = 12/algo.N * (t+1)**(-0.55)
             eps = eps**0.5 #normal uses std and not variance
 
     return torch.stack(samples_theta)
