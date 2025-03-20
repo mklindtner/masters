@@ -82,9 +82,17 @@ def metropolis_step(x,proposal_dist, pi_dist):
     return x
 
 
+class BNN:
+    def forward():
+        pass
 
+    def log_joint(x):
+        pass
 
-class gped2DNormal():
+    def gradient_log_joint():
+        pass
+
+class gped2DNormal(BNN):
     def __init__(self,x,y,batch_sz, alpha, beta, prior_mean,D, sim=True):
         self.alpha = alpha
         self.beta = beta
@@ -95,6 +103,10 @@ class gped2DNormal():
         self.sim = sim
         self.N = len(x)
         self.M = batch_sz
+        self._standardize()
+
+        self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v 
+        self.predict = lambda x, a, b: a + b*x
         
     def _standardize(self):
         x_mean = torch.mean(self.x)
@@ -107,31 +119,35 @@ class gped2DNormal():
 
     def log_prior(self,theta):
         return self.prior.log_prob(theta)
-
-    def log_likelihood(self,theta):
-        if self.x.dim() == 1:
-            self.x = self.x[:,None] 
-
-        phi = torch.cat([torch.ones_like(self.x), self.x],dim=1)
-        sigma = 1/self.beta * torch.eye(len(self.x))
-
-        #if matrix of weights and not estiamte single value
-        if not self.sim:
-            mu2 = torch.mm(theta, phi.T)
-            likelihood = MultivariateNormal(mu2, covariance_matrix=sigma)
-            log_prob = likelihood.log_prob(self.y.squeeze())
-            return (self.N / self.M)  * log_prob
         
-        #predict mu
-        mu = torch.mv(phi, theta)
-        likelihood = MultivariateNormal(mu,covariance_matrix=sigma)
-        if self.y.shape[0] == 1:
-            return (self.N / self.M)  * likelihood.log_prob(self.y)
-        return (self.N / self.M)  * likelihood.log_prob(self.y.squeeze())
+
+    def log_likelihood(self, theta):    
+        #for single sample            
+        if theta.dim() == 1:
+            theta = theta[None,:]        
+
+        #get batch size
+        idx = torch.randperm(len(self.x))[:self.M]
+        batch_x = self.x[idx]
+        batch_y = self.y[idx]
+
+        if self.sim == False:
+            batch_x = self.x
+            batch_y = self.y
+            self.M = len(self.x)
+        
+        theta_pred = self.predict(batch_x, theta[:,0], theta[:,1])   
+            
+        likelihood = self.log_npdf(batch_y, theta_pred, 1/self.beta) 
+        ll = torch.sum(likelihood, 0)
+        ll_batch = (self.N / self.M ) * ll 
+        return ll_batch
+        
 
     def log_joint(self, theta):
         return (self.log_prior(theta) + self.log_likelihood(theta))
     
+
     def log_joint_gradient(self, theta): 
         # Ensure theta requires gradients
         if not theta.requires_grad:

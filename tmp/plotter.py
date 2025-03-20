@@ -18,3 +18,13 @@ def plotter(w, algo2D, w_MAP, w_MLE):
     axes[2].legend(loc='lower right')
     plt.show()
 
+
+
+def plot_mcmc(w, algo2D, w_MAP, axis, name):
+    axis.plot(w[:,1],w[:,0], "ro", label="estimated weights")
+    algo2D.sim = False
+    axis.plot(w_MAP[1], w_MAP[0], 'bo', label='MAP/Posterior mean')
+    axis.legend(loc='lower right')
+    plot_distribution(axis,density_fun=algo2D.log_joint, color='g', label='Posterior', title=name, visibility=0.25)
+
+

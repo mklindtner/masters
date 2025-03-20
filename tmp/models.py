@@ -28,9 +28,9 @@ class gped2DNormal(BNN):
         self.M = batch_sz
         self._standardize()
 
-        self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v 
+        self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v
         self.predict = lambda x, a, b: a + b*x
-        
+
     def _standardize(self):
         x_mean = torch.mean(self.x)
         x_std = torch.std(self.x)
@@ -42,11 +42,12 @@ class gped2DNormal(BNN):
 
     def log_prior(self,theta):
         return self.prior.log_prob(theta)
-        
 
-    def log_likelihood(self, theta):        
+
+    def log_likelihood(self, theta):
+        #for single sample
         if theta.dim() == 1:
-            theta = theta[None,:]        
+            theta = theta[None,:]
 
         #get batch size
         idx = torch.randperm(len(self.x))[:self.M]
@@ -57,24 +58,24 @@ class gped2DNormal(BNN):
             batch_x = self.x
             batch_y = self.y
             self.M = len(self.x)
-        
-        theta_pred = self.predict(batch_x, theta[:,0], theta[:,1])   
-            
-        likelihood = self.log_npdf(batch_y, theta_pred, 1/self.beta) 
+
+        theta_pred = self.predict(batch_x, theta[:,0], theta[:,1])
+
+        likelihood = self.log_npdf(batch_y, theta_pred, 1/self.beta)
         ll = torch.sum(likelihood, 0)
-        ll_batch = (self.N / self.M ) * ll 
+        ll_batch = (self.N / self.M ) * ll
         return ll_batch
-        
+
 
     def log_joint(self, theta):
         return (self.log_prior(theta) + self.log_likelihood(theta))
-    
 
-    def log_joint_gradient(self, theta): 
+
+    def log_joint_gradient(self, theta):
         # Ensure theta requires gradients
         if not theta.requires_grad:
             theta = theta.requires_grad_(True)
-    
+
         # Zero the gradient before computing the new gradient
         if theta.grad is not None:
             theta.grad.zero_()
@@ -87,13 +88,75 @@ class gped2DNormal(BNN):
         # Ensure theta requires gradients
         if not theta.requires_grad:
             theta = theta.requires_grad_(True)
-    
+
         # Zero the gradient before computing the new gradient
         if theta.grad is not None:
             theta.grad.zero_()
-        
+
         # return self.log_joint(theta).grad.detach()
         return torch.autograd.grad(self.log_joint(theta), theta,create_graph=False)[0]
+
+
+
+# #simple student class, uses no smarty-party
+class gped2DNormal_student(BNN):
+
+    def __init__(self, x,y, batch_sz, g, alpha, beta, prior_mean, D=2):
+        self.x = x
+        self.y = y
+        self.batch_sz = batch_sz
+        self.g = self._gposterior
+        self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v
+        self.prior = MultivariateNormal(prior_mean,covariance_matrix=1/self.alpha * torch.eye(D))
+
+        self.predict = lambda x, a, b: a + b*x
+
+    def log_prior(self,theta):
+        return self.prior.log_prob(theta)
+
+    def log_likelihood(self, theta):
+        #for single sample
+        if theta.dim() == 1:
+            theta = theta[None,:]
+
+        #get batch size
+        idx = torch.randperm(len(self.x))[:self.M]
+        batch_x = self.x[idx]
+        batch_y = self.y[idx]
+
+        if self.sim == False:
+            batch_x = self.x
+            batch_y = self.y
+            self.M = len(self.x)
+
+        theta_pred = self.predict(batch_x, theta[:,0], theta[:,1])
+
+        likelihood = self.log_npdf(batch_y, theta_pred, 1/self.beta)
+        ll = torch.sum(likelihood, 0)
+        ll_batch = (self.N / self.M ) * ll
+        return ll_batch
+
+    def log_joint(self, theta):
+        return (self.log_prior(theta) + self.log_likelihood(theta))
+
+    def gradient_log_joint():
+        pass
+
+    def Us(self, gyis, theta_t, mis):
+        return self.g(gyis, theta_t, mis)
+
+
+    def _gposterior(self, gyis, theta_t, mis):
+        return torch.exp(self.log_joint(theta_t))
+
+    # def Ucirc(self, g_yis, theta_t, m_is, y, x_i):
+    #     g_yi = self.g(y, x_i, theta_t)
+    #     m_is_new = m_is + 1
+    #     g_yis_new = (m_is * g_yis + g_yi) / m_is_new
+    #     return g_yis_new, m_is_new
+
+
+
 
 
 def plot_weights(ax, algo, thetas, color=None, visibility=1, label=None, title=None):
@@ -110,19 +173,19 @@ def plot_weights(ax, algo, thetas, color=None, visibility=1, label=None, title=N
 
 
 def plot_distribution(ax, density_fun, color=None, visibility=1, label=None, title=None, num_points = 1000):
-    
+
     # create grid for parameters (a,b)
     a_array = torch.linspace(-4, 4, num_points)
     b_array = torch.linspace(-4, 4, num_points)
-        
-    A_array, B_array = torch.meshgrid(a_array, b_array)   
-        
+
+    A_array, B_array = torch.meshgrid(a_array, b_array)
+
     AB = torch.column_stack((A_array.ravel(), B_array.ravel()))
-    
+
     Z = density_fun(AB)
     Z = Z.reshape(a_array.shape[0], b_array.shape[0])
-    
-    # plot contour  
+
+    # plot contour
     ax.contour(a_array, b_array, torch.exp(Z).numpy(), colors=color, alpha=visibility)
     ax.plot([-1000], [-1000], color=color, label=label)
     ax.set(xlabel='slope', ylabel='intercept', xlim=(-4, 4), ylim=(-4, 4), title=title)
@@ -144,15 +207,97 @@ def analytical_gradient(theta, Phi, ytrain, beta):
     return grad, m
 
 
+def SGLD_step(theta, theta_grad, eps, N, t):
+    eta_t = torch.normal(mean=0.0, std=eps, size=theta.shape, dtype=theta.dtype, device=theta.device)
+    delta_theta = eps/2 * theta_grad + eta_t
+    theta.add_(delta_theta)
+    theta.grad.zero_()
+
+    eps = 12/N * (t+1)**(-0.55)
+    eps = eps**0.5 #normal uses std and not variance
+    return theta, eps
+
+
+def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
+    #Initialize for teacher
+    theta = theta_init.detach().clone().requires_grad_(True)
+    samples_theta_teacher = [None]*T
+
+    #Initialize for student
+    student_sampling = math.ceil(int(((T-burn_in)/H)))
+    phi = phi_init.detach().clone().requires_grad_(True)
+    samples_phi_student = [None]*student_sampling
+    s = 0
+    # mis = [[0 for _ in range(T)] for _ in range(algo_student.M)]
+    gyis_list = [None]*student_sampling
+
+    for t in range(T):
+        theta_grad = algo_teacher.log_joint_gradient(theta)
+        with torch.no_grad():
+            #sample from teacher
+            theta, eps = SGLD_step(theta, theta_grad, eps, algo_teacher.N, t)
+            samples_theta_teacher[t] = theta.detach().clone()
+            # if t > burn_in and t % H == 0:
+                
+                #use the same model as teacher for now
+                #also use the same sample use
+                #use Monte Carlo estimate for gyis
+                # gyis = 0
+                # for j in range(t):
+                #     tmp_theta = samples_theta_teacher[j]
+                #     gyis += torch.exp(algo_student.log_joint(tmp_theta))
+                # student_samples = torch.stack(samples_phi_student[:s])
+                # gyis = torch.mean(student_samples,axis=0)
+                # gyis_list[s] = gyis
+
+                # gyis_list[s] = 1/len(samples_theta_teacher) * gyis
+                # gyis = torch.exp(algo_student.log_joint(samples_theta_teacher))
+                # gyis = torch.sum(gyis, axis=0).mean()
+                # gyis[s] = gyis
+
+                # teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
+                # gyis = torch.mean(algo_teacher.log_likelihood(teacher_samples),axis=0)
+                # algo_student.log_likelihood(phi)
+
+                # gyis = torch.mean(teacher_samples,axis=0)
+                # gyis_list[s] = gyis
+                
+                
+                #something weird about the log_likelihood here and theta
+                #theta update fucked?
+                # gyis = algo_teacher.log_likelihood(theta)
+                # gyis_list[s] = gyis
+
+
+                # opt.zero_grad()
+                # loss = criterion(gyis, algo_student.log_likelihood(phi), reduction='batchmean')
+                # samples_phi_student[s] = loss
+                # loss.backward()
+                # opt.step()
+
+                # s += 1
+
+                # if s % 10 == 0:
+                #     print(f"Student Epoch {s}, Loss: {loss.item()}, Theta: {theta}, Phi: {phi}")
+
+    # return None
+    # mean = sum(gyis)/len(gyis)
+    # return torch.stack(samples_theta_teacher), gyis_list
+    return torch.stack(samples_theta_teacher)
+
+
+
+
+
 #SGLD
 def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
     theta = theta_init.detach().clone().requires_grad_(True)
 
     samples_theta = [None]*T
 
-    for t in range(T):        
+    for t in range(T):
         theta_grad = algo.log_joint_gradient(theta)
-        with torch.no_grad():            
+        with torch.no_grad():
             eta_t = torch.normal(mean=0.0, std=eps, size=theta.shape, dtype=theta.dtype, device=theta.device)
             delta_theta = eps/2 * theta_grad + eta_t
             theta.add_(delta_theta)
@@ -161,16 +306,10 @@ def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
 
             print(t)
             eps = 12/algo.N * (t+1)**(-0.55)
+
             eps = eps**0.5 #normal uses std and not variance
 
     return torch.stack(samples_theta)
-
-
-def scale_step(N, eps, t):
-    # eps_proposal = 4/N * 1/(((t+1)**(1e-4)))
-    
-
-    return None
 
 
 #ULA
@@ -180,12 +319,12 @@ def mcmc_ULA(algo, theta_init,lr=1e-2, T=100):
     samples_theta = [None]*(T)
 
     for t in range(T):
-        theta_grad = algo.log_joint_gradient(theta)       
+        theta_grad = algo.log_joint_gradient(theta)
         with torch.no_grad():
             #update teacher
             noise = torch.randn_like(theta_grad)*zt
             theta_grad_update = (lr/2) * theta_grad + noise
-            theta.add_(theta_grad_update)                        
+            theta.add_(theta_grad_update)
             samples_theta[t] = theta.detach().clone()
 
             theta.grad.zero_()
@@ -196,7 +335,7 @@ def mcmc_MALA(algo, theta_init, T=100):
     theta = theta_init.detach().clone().requires_grad_(True)
     D = 2
     samples_theta = [None]*T
-     
+
     #Roberts & Rosenthal (1998) optimal scaling parameter but did not work
         # h = 2.38**2 / D
     h = 1e-2
@@ -204,7 +343,7 @@ def mcmc_MALA(algo, theta_init, T=100):
 
     for t in range(T):
         grad = algo.get_log_joint_gradient(theta) #make sure the guess changes!
-        mu =  theta + h/2 * grad    
+        mu =  theta + h/2 * grad
         proposal_dist = MultivariateNormal(mu,cov)
 
         # print(f"Step {t}: Gradient = {grad}, Proposal Mean (mu) = {mu}")

@@ -1,10 +1,11 @@
-from models import gped2DNormal, design_matrix, plot_distribution, analytical_gradient, mcmc_ULA, mcmc_MALA, mcmc_SGLD
+from models import gped2DNormal, design_matrix, plot_distribution, analytical_gradient, mcmc_ULA, mcmc_MALA, mcmc_SGLD, posterior_expectation_distillation
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
 import matplotlib.pyplot as plt
 import math
-from plotter import plotter
+from plotter import plotter,  plot_mcmc
+import torch.optim as optim
 
 
 #Example week3
@@ -23,18 +24,42 @@ theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
 
 
-algo2D = gped2DNormal(xtrain,ytrain, batch_sz=5, alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
+algo2D = gped2DNormal(xtrain,ytrain, batch_sz=len(xtrain), alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
 
 #MLE/MAP
 Phi_train = design_matrix(algo2D.x)
 w_MLE = np.linalg.solve(Phi_train.T@Phi_train, Phi_train.T@algo2D.y).ravel()
 w_MAP = (beta*torch.linalg.solve(alpha*torch.eye(2) + beta*(Phi_train.T@Phi_train), Phi_train.T)@algo2D.y).ravel()
 
-# w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, lr = 2e-2)
-# w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0], requires_grad=True), T=1000)
-w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
+#General posterior distillation
+
+adam = optim.Adam([torch.tensor([[0.5,0.5]], requires_grad=True)])
+# loss = lambda p, q: -p*torch.log(q)
+loss = torch.nn.functional.kl_div
+
+w_gen = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo2D, theta_init=w_MAP, phi_init=w_MAP, reg=None, alphas = None, criterion=loss, opt=adam, T=1000)
 
 algo2D.sim = False
-plotter(w_SGLD, algo2D, w_MAP, w_MLE)
+plotter(w_gen, algo2D, w_MAP, w_MLE)
+
+
+#MCMC's
+# w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, lr = 2e-2)
+# w_MALA = mcmc_MALA(algo2D, theta_init=w_MAP, T=1000)
+# # w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0], requires_grad=True), T=1000)
+# w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
+
+# #Plot all mcmc
+# _, axes = plt.subplots(1, 3, figsize=(18,6))
+
+# plot_mcmc(w_ULA, algo2D, w_MAP, axes[0], 'ULA')
+# plot_mcmc(w_MALA, algo2D, w_MAP, axes[1], 'MALA')
+# plot_mcmc(w_SGLD, algo2D, w_MAP, axes[2], 'SGLD')
+# plt.show()
+
+
+#Plot single mcmc
+# algo2D.sim = False
+# plotter(w_SGLD, algo2D, w_MAP, w_MLE)
 # plotter(w_MALA, algo2D, w_MAP, w_MLE)
 # plotter(w_ULA)
