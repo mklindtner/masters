@@ -1,30 +1,40 @@
 import torch
-import torch.distributions as dist
 
-# Define the design matrix Phi (N x D)
-N = 20  # Number of observations
-D = 2   # Number of features (including bias)
-Phi = torch.randn(N, D)  # Shape [N, D]
+# Create input data
+x = torch.linspace(0, 1, steps=10).unsqueeze(1)  # shape: (10, 1)
 
-# Define the response variables y (N observations)
-y = torch.randn(N)  # Shape [N]
+# True parameters (theta)
+theta_0 = torch.tensor([2.0])
+theta_1 = torch.tensor([3.0])
 
-# Define the weight vector w (D-dimensional)
-w = torch.randn(D)  # Shape [D]
+# Generate y using true parameters (no noise for simplicity)
+y_true = theta_0 + theta_1 * x
 
-# Define the noise variance (sigma^2)
-sigma = 1.0
-variance = sigma**2
 
-# Compute the mean (Phi * w)
-mean = torch.mv(Phi, w)  # Shape [N]
+# Initialize phi parameters with requires_grad=True to track gradients
+phi_0 = torch.randn(1, requires_grad=True)
+phi_1 = torch.randn(1, requires_grad=True)
 
-# Define the covariance matrix (sigma^2 * I)
-covariance = variance * torch.eye(N)  # Shape [N, N]
+learning_rate = 0.1
 
-# Create the MultivariateNormal distribution for the likelihood
-likelihood = dist.MultivariateNormal(mean, covariance)
+for i in range(100):
+    # Compute prediction
+    y_pred = phi_0 + phi_1 * x
 
-# Compute the log probability of the response variables y
-log_prob = likelihood.log_prob(y)  # Shape [] (scalar)
-print("Log probability of y given w:", log_prob.item())
+    # Compute mean squared error loss
+    loss = torch.mean((y_pred - y_true) ** 2)
+
+    # Backpropagation
+    loss.backward()
+
+    # Gradient descent update (manually, without optimizer)
+    with torch.no_grad():
+        phi_0 -= learning_rate * phi_0.grad
+        phi_1 -= learning_rate * phi_1.grad
+
+        # Zero the gradients after updating
+        phi_0.grad.zero_()
+        phi_1.grad.zero_()
+
+    if i % 10 == 0:
+        print(f"Step {i}: Loss = {loss.item():.4f}, phi_0 = {phi_0.item():.4f}, phi_1 = {phi_1.item():.4f}")

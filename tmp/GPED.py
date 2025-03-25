@@ -43,13 +43,15 @@ def algo_student_reg(w, x):
     return inputs @ w[:,None]
     # return inputs @ w[None,:].T
 
-w_teacher, w_gen = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo_student_reg, theta_init=w_MAP, phi_init=w_MAP, reg=None, alphas = None, criterion=loss, opt=adam, T=1000)
+w_teacher, w_gen = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo_student_reg, theta_init=w_MAP, phi_init=w_MAP, reg=None, alphas = None, criterion=loss, opt=adam, T=10000)
 
 algo2D.sim = False
 # plotter(w_gen, algo2D, w_MAP, w_MLE)
 _, axes = plt.subplots(1, 3, figsize=(18,6))
 
 plot_mcmc(w_teacher, algo2D, w_MAP, axes[0], 'teacher weights')
+plot_mcmc(w_gen, algo2D, w_MAP, axes[1], 'student weights')
+plt.show()
 
 
 #MCMC's

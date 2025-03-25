@@ -273,21 +273,23 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
             # phi = phi + 1e-2 * phi.grad
 
             with torch.no_grad():
-                phi += 1e-3 * phi.grad
+                phi -= 1e-2 * phi.grad
             # phi = (phi + loss)
 
             samples_phi_student[s] = phi.detach().clone()
             phi.grad.zero_()
             opt.step()
-            print(s)
+            # print(s)
             s += 1
 
-            # if s % 100 == 0:
-            #     print(f"Student Epoch {s}, Loss: {loss.item()}, Theta: {theta}, Phi: {phi}")
+            if s % 100 == 0:
+                print(f"Student Epoch {s}, Loss: {loss.item()}, Theta: {theta}, Phi: {phi}")
 
     # return None
     # mean = sum(gyis)/len(gyis)
     # return torch.stack(samples_theta_teacher), gyis_list
+    samples_theta_teacher = [theta.detach().clone() for theta in samples_theta_teacher]
+    samples_phi_student = [phi.detach().clone() for phi in samples_phi_student]
     return torch.stack(samples_theta_teacher), torch.stack(samples_phi_student)
 
 
