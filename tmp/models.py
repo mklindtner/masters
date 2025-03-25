@@ -92,13 +92,14 @@ class gped2DNormal(BNN):
         # Zero the gradient before computing the new gradient
         if theta.grad is not None:
             theta.grad.zero_()
-
+        else:
+            self.log_joint(theta).backward()
+            
         # return self.log_joint(theta).grad.detach()
         return torch.autograd.grad(self.log_joint(theta), theta,create_graph=False)[0]
 
 
 
-# #simple student class, uses no smarty-party
 class gped2DNormal_student(BNN):
 
     def __init__(self, x,y, batch_sz, g, alpha, beta, prior_mean, D=2):
@@ -218,6 +219,23 @@ def SGLD_step(theta, theta_grad, eps, N, t):
     return theta, eps
 
 
+def MALA_step(theta, algo2D):
+    # theta = theta0.detach().clone().requires_grad_(True)
+    D = 2
+    h = 1e-2
+    cov = h*torch.eye(D)
+
+
+    grad = algo2D.get_log_joint_gradient(theta) 
+    mu =  theta + h/2 * grad
+    proposal_dist = MultivariateNormal(mu,cov)
+
+    # print(f"Step {t}: Gradient = {grad}, Proposal Mean (mu) = {mu}")
+
+    theta = metropolis_step(theta, proposal_dist=proposal_dist, pi_dist=algo2D.log_joint)
+    return theta
+
+
 def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
     #Initialize for teacher
     theta = theta_init.detach().clone().requires_grad_(True)
@@ -229,61 +247,43 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
     samples_phi_student = [None]*student_sampling
     s = 0
     # mis = [[0 for _ in range(T)] for _ in range(algo_student.M)]
-    gyis_list = [None]*student_sampling
 
     for t in range(T):
-        theta_grad = algo_teacher.log_joint_gradient(theta)
-        with torch.no_grad():
-            #sample from teacher
-            theta, eps = SGLD_step(theta, theta_grad, eps, algo_teacher.N, t)
-            samples_theta_teacher[t] = theta.detach().clone()
-            # if t > burn_in and t % H == 0:
-                
-                #use the same model as teacher for now
-                #also use the same sample use
-                #use Monte Carlo estimate for gyis
-                # gyis = 0
-                # for j in range(t):
-                #     tmp_theta = samples_theta_teacher[j]
-                #     gyis += torch.exp(algo_student.log_joint(tmp_theta))
-                # student_samples = torch.stack(samples_phi_student[:s])
-                # gyis = torch.mean(student_samples,axis=0)
-                # gyis_list[s] = gyis
+        # theta_grad = algo_teacher.log_joint_gradient(theta)
+        theta = MALA_step(theta, algo2D=algo_teacher)
 
-                # gyis_list[s] = 1/len(samples_theta_teacher) * gyis
-                # gyis = torch.exp(algo_student.log_joint(samples_theta_teacher))
-                # gyis = torch.sum(gyis, axis=0).mean()
-                # gyis[s] = gyis
+        # with torch.no_grad():
+        #sample from teacher
+        # theta, eps = SGLD_step(theta, theta_grad, eps, algo_teacher.N, t)
 
-                # teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
-                # gyis = torch.mean(algo_teacher.log_likelihood(teacher_samples),axis=0)
-                # algo_student.log_likelihood(phi)
+        samples_theta_teacher[t] = theta.detach().clone().requires_grad_(True)
 
-                # gyis = torch.mean(teacher_samples,axis=0)
-                # gyis_list[s] = gyis
-                
-                
-                #something weird about the log_likelihood here and theta
-                #theta update fucked?
-                # gyis = algo_teacher.log_likelihood(theta)
-                # gyis_list[s] = gyis
+        if t > burn_in and t % H == 0:                               
+            teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
+            gyis = 1/(t-burn_in+1) * torch.sum(teacher_samples,axis=0)
+            opt.zero_grad()
 
+            pred = algo_student(phi, algo_teacher.x)   
+            target = algo_student(gyis, algo_teacher.x)
 
-                # opt.zero_grad()
-                # loss = criterion(gyis, algo_student.log_likelihood(phi), reduction='batchmean')
-                # samples_phi_student[s] = loss
-                # loss.backward()
-                # opt.step()
+            loss = criterion(target, pred)
+            loss.backward()
+            phi = phi + 1e-2 * loss.detach().clone()
+            # phi = (phi + loss)
 
-                # s += 1
+            samples_phi_student[s] = phi.detach().clone()
+            # phi.grad.zero._()
+            opt.step()
 
-                # if s % 10 == 0:
-                #     print(f"Student Epoch {s}, Loss: {loss.item()}, Theta: {theta}, Phi: {phi}")
+            s += 1
+
+            if s % 100 == 0:
+                print(f"Student Epoch {s}, Loss: {loss.item()}, Theta: {theta}, Phi: {phi}")
 
     # return None
     # mean = sum(gyis)/len(gyis)
     # return torch.stack(samples_theta_teacher), gyis_list
-    return torch.stack(samples_theta_teacher)
+    return torch.stack(samples_theta_teacher), torch.stack(samples_phi_student)
 
 
 
