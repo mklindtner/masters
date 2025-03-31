@@ -77,7 +77,7 @@ def row_statistic_actual(ax, W):
         [b1_mean_str]
     ]
     row_labels = [r'$\beta_0$', r'$\beta_1$']
-    col_labels = ["Actual Values"]
+    col_labels = ["True parameters"]
     ax.axis('off') # Turn off axis lines and ticks for the table plot
     table = ax.table(cellText=cell_txt,
                      rowLabels=row_labels,

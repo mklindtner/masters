@@ -89,13 +89,8 @@ plot_mcmc(axes[id+2][id+2],'SGLD', w_SGLD, algo2D, w_MAP)
 row_statistic_actual(axes[id+3][0], M.T)
 axes[id+3][1].axis("off")
 plot_distribution(axes[id+3][2],density_fun=algo2D.log_joint, color='g', label='Posterior', title='Posterior', visibility=0.25)
-
-# axes[id+3][2].axis("off")
-
-# plot_actual(axes[id+4], algo2D, w_MAP, w_MLE)
-
-
-
+axes[id+3][2].plot(w_MAP[1], w_MAP[0], 'bo', label='MAP')
+axes[id+3][2].legend(loc='lower right',fontsize='small', markerscale=0.3)
 
 #etc.
 plt.tight_layout()

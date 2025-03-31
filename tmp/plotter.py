@@ -6,7 +6,6 @@ import numpy as np
 
 
 def plot_kl_divergence(ax, kl_divergences, kl_min, kl_max):
-    # x_axis = np.linspace(0, len(kl_divergences), num=len(kl_divergences))
     x_axis = range(1,len(kl_divergences) + 1)
     ax.plot(x_axis, kl_divergences)
     title = f"Time Vs kl_div\n min/max: {kl_min:.0f}:{kl_max:.0f}"
@@ -47,8 +46,8 @@ def plotter(w, algo2D, w_MAP, w_MLE):
 def plot_mcmc(axis,name, w, algo2D, w_MAP):
     axis.plot(w[:,1],w[:,0], "ro", label="samples")
     algo2D.sim = False
-    axis.plot(w_MAP[1], w_MAP[0], 'bo', label='MAP/Posterior mean')
-    # axis.legend(loc='lower right',fontsize='small', markerscale=0.2)
+    axis.plot(w_MAP[1], w_MAP[0], 'bo', label='MAP')
+    axis.legend(loc='lower right',fontsize='small', markerscale=0.3)
     plot_distribution(axis,density_fun=algo2D.log_joint, color='g', label='Posterior', title=name, visibility=0.25)
 
 
