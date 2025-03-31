@@ -236,7 +236,11 @@ def MALA_step(theta, algo2D):
     return theta
 
 
+
+
+
 def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
+    
     #Initialize for teacher
     theta = theta_init.detach().clone().requires_grad_(True)
     samples_theta_teacher = [None]*T
@@ -246,7 +250,6 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
     phi = phi_init.detach().clone().requires_grad_(True)
     samples_phi_student = [None]*student_sampling
     s = 0
-    # mis = [[0 for _ in range(T)] for _ in range(algo_student.M)]
 
     for t in range(T):
         # theta_grad = algo_teacher.log_joint_gradient(theta)
@@ -268,13 +271,9 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
             loss = criterion(target, pred)
             loss.backward()
-            # with torch.no_grad():
-                # phi = phi + 1e-2 * loss.detach().clone()
-            # phi = phi + 1e-2 * phi.grad
 
             with torch.no_grad():
                 phi -= 1e-2 * phi.grad
-            # phi = (phi + loss)
 
             samples_phi_student[s] = phi.detach().clone()
             phi.grad.zero_()
@@ -285,9 +284,6 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
             if s % 100 == 0:
                 print(f"Student Epoch {s}, Loss: {loss.item()}, Theta: {theta}, Phi: {phi}")
 
-    # return None
-    # mean = sum(gyis)/len(gyis)
-    # return torch.stack(samples_theta_teacher), gyis_list
     samples_theta_teacher = [theta.detach().clone() for theta in samples_theta_teacher]
     samples_phi_student = [phi.detach().clone() for phi in samples_phi_student]
     return torch.stack(samples_theta_teacher), torch.stack(samples_phi_student)
@@ -311,7 +307,7 @@ def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
             samples_theta[t] = theta.detach().clone()
             theta.grad.zero_()
 
-            print(t)
+            # print(t)
             eps = 12/algo.N * (t+1)**(-0.55)
 
             eps = eps**0.5 #normal uses std and not variance
@@ -349,7 +345,7 @@ def mcmc_MALA(algo, theta_init, T=100):
     cov = h*torch.eye(D)
 
     for t in range(T):
-        grad = algo.get_log_joint_gradient(theta) #make sure the guess changes!
+        grad = algo.get_log_joint_gradient(theta)
         mu =  theta + h/2 * grad
         proposal_dist = MultivariateNormal(mu,cov)
 
@@ -368,7 +364,7 @@ def metropolis_step(x,proposal_dist, pi_dist):
     # print(f"{xprime[0].item()}, {xprime[1].item()}", pi_dist(x).item())
     proposal = pi_dist(xprime) - pi_dist(x)
 
-    #log domian check
+    #domian check
     log_proposal = torch.min(torch.tensor(0.0),proposal)
 
 
