@@ -255,8 +255,6 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
         # theta_grad = algo_teacher.log_joint_gradient(theta)
         theta = MALA_step(theta, algo2D=algo_teacher)
 
-        # with torch.no_grad():
-        #sample from teacher
         # theta, eps = SGLD_step(theta, theta_grad, eps, algo_teacher.N, t)
 
         samples_theta_teacher[t] = theta.detach().clone().requires_grad_(True)
@@ -293,7 +291,7 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
 
 #SGLD
-def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
+def mcmc_SGLD(algo, theta_init, eps=1e-9, T=100):
     theta = theta_init.detach().clone().requires_grad_(True)
 
     samples_theta = [None]*T
@@ -302,15 +300,20 @@ def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
         theta_grad = algo.log_joint_gradient(theta)
         with torch.no_grad():
             eta_t = torch.normal(mean=0.0, std=eps, size=theta.shape, dtype=theta.dtype, device=theta.device)
-            delta_theta = eps/2 * theta_grad + eta_t
-            theta.add_(delta_theta)
+            theta = theta + eps/2 * theta_grad + eta_t
+            
+            # theta.add_(delta_theta)
+
             samples_theta[t] = theta.detach().clone()
-            theta.grad.zero_()
+            if theta.grad is not None:
+                theta.grad.zero_()
 
             # print(t)
-            eps = 12/algo.N * (t+1)**(-0.55)
+            # eps = 12/algo.N * (t+1)**(-0.55)
+            eps = 12/algo.N * (t+1)**(-0.99)
 
-            eps = eps**0.5 #normal uses std and not variance
+
+            eps = eps**1/2 #normal uses std and not variance
 
     return torch.stack(samples_theta)
 

@@ -48,6 +48,7 @@ def algo_student_reg(w, x):
 
 
 
+
 w_MALA = mcmc_MALA(algo2D, theta_init=w_MAP, T=1000)
 w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, lr = 1e-2)
 w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
