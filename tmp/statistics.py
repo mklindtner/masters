@@ -5,20 +5,44 @@ import matplotlib.pyplot as plt
 
 
 
-def weight_kl(W_samples, target_dst):
-    """
-        calculate the KL-divergence between all samples and a target distribution
-        Assumes the samples to be normal
-        
-    """
-    kl_divs = [None]*W_samples.shape[0]
+def posterior_params_samplers(w_MALA, w_ULA, w_SGLD, target):
+    w_MALA = torch.mean()
 
-    for id, W in enumerate(W_samples):
-        guess = MultivariateNormal(W, covariance_matrix=torch.eye(2))
-        kl_divs[id] = kl_divergence(guess, target_dst).item()
 
-    return kl_divs, min(kl_divs), max(kl_divs)
 
+def weight_kl(MALA_samples, ULA_samples, SGLD_samples, target):
+    x = torch.arange(5,len(MALA_samples))
+    KL_MALA = [None]*len(x)
+    KL_ULA = [None]*len(x)
+    KL_SGLD = [None]*len(x)
+
+    for i, id in enumerate(x):
+        MALA_w_s = MALA_samples[0:id]
+        MALA_mhat = torch.mean(MALA_w_s, axis=0)
+        MALA_shat = torch.cov(MALA_w_s.T)
+        MALA_guess = MultivariateNormal(MALA_mhat, MALA_shat)
+        KL_MALA[i] = kl_divergence(MALA_guess, target).item()
+
+        ULA_w_s = ULA_samples[0:id]
+        ULA_mhat = torch.mean(ULA_w_s, axis=0)
+        ULA_shat = torch.cov(ULA_w_s.T)
+        ULA_guess = MultivariateNormal(ULA_mhat, ULA_shat)
+        KL_ULA[i] = kl_divergence(ULA_guess,target).item()
+
+        SGLD_w_s = SGLD_samples[0:id]
+        SGLD_mhat = torch.mean(SGLD_samples,axis=0)
+        SGLD_shat = torch.cov(SGLD_w_s.T)
+        SGLD_guess = MultivariateNormal(SGLD_mhat, SGLD_shat)
+        KL_SGLD[i] = kl_divergence(SGLD_guess, target).item()
+    
+    sample_sz = MALA_samples.shape[0]
+    target_samples = target.rsample((sample_sz,))
+    mhat_true = torch.mean(target_samples,axis=0)
+    shat_true = torch.cov(target_samples.T)
+    sample_true = MultivariateNormal(mhat_true, shat_true)
+    KL_true = kl_divergence(sample_true, target)
+
+    return KL_MALA, KL_ULA, KL_SGLD, KL_true
 
 def E_weights(W_samples):
     return 1/len(W_samples) * torch.sum(W_samples,dim=0)

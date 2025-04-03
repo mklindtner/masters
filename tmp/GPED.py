@@ -2,9 +2,9 @@ from models import gped2DNormal, gped2DNormal_student, design_matrix, mcmc_ULA, 
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from plotter import plot_all_samplers_2D, plot_simple_student_2D
+from plotter import plot_simple_student_2D, plot_samplers_2D
 import torch.optim as optim
-# from torch.distributions.multivariate_normal import MultivariateNormal
+from torch.distributions.multivariate_normal import MultivariateNormal
 # import math
 # from torch.distributions.kl import kl_divergence
 # from plotter import plotter,  plot_mcmc, plot_all_MCMC, plot_simple_student, plot_kl_divergence, plot_actual
@@ -40,17 +40,15 @@ w_MLE = np.linalg.solve(Phi_train.T@Phi_train, Phi_train.T@algo2D.y).ravel()
 w_MAP = (beta*torch.linalg.solve(alpha*torch.eye(2) + beta*(Phi_train.T@Phi_train), Phi_train.T)@algo2D.y).ravel()
 
 #Analytical mean and covariance for S,M for 2D example
-S = torch.inverse(torch.eye(2) + beta * Phi_train.T @ Phi_train)
+S = torch.inverse(alpha*torch.eye(2) + beta * Phi_train.T @ Phi_train)
 M = beta*S@Phi_train.T @ algo2D.y
+target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 
+T = 3000
+w_MALA = mcmc_MALA(algo2D, theta_init=w_MAP, T=T)
+w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=T, lr = 1e-2)
+w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=T)
 
-w_MALA = mcmc_MALA(algo2D, theta_init=w_MAP, T=1000)
-w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, lr = 1e-2)
-w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
-
-#3 rows for samplers, 1 for actual values
-#2 rows for student and teacher weights
-_, axes = plt.subplots(6,3, figsize=(12,9))
 
 
 
@@ -66,11 +64,18 @@ def algo_student_reg(w, x):
 
 
 #Plot expectation for simple student model
-w_teacher, w_student = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo2D_student_simple, theta_init=w_MAP, phi_init=w_MAP, f=algo_student_reg , reg=None, alphas = None, criterion=loss, opt=adam, T=1000)
+w_teacher, w_student = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo2D_student_simple, theta_init=w_MAP, phi_init=w_MAP, f=algo_student_reg , reg=None,criterion=loss, opt=adam, T=1000)
 
-#Plots
-plot_all_samplers_2D(axes, w_MALA=w_MALA, w_ULA=w_ULA, w_SGLD=w_SGLD, M=M, S=S, algo2D=algo2D, w_MAP=w_MAP)
-plot_simple_student_2D(axes, w_teacher, w_student, algo2D, w_MAP, w_MLE)
+# #Plots
+#3 rows for samplers, 1 for actual values
+#2 rows for student and teacher weights
+_, axes = plt.subplots(2,2, figsize=(12,9))
+plot_samplers_2D(axes, w_MALA, w_ULA, w_SGLD, target)
+
+# plot_all_samplers_2D(axes, w_MALA=w_MALA, w_ULA=w_ULA, w_SGLD=w_SGLD, M=M, S=S, algo2D=algo2D, w_MAP=w_MAP)
+# plot_simple_student_2D(axes, w_teacher, w_student, algo2D, w_MAP, w_MLE)
+
+
 
 
 plt.show()

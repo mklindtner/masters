@@ -27,8 +27,8 @@ class gped2DNormal(BNN):
         self.sim = sim
         self.N = len(x)
         self.M = batch_sz
-        if should_std:
-            self._standardize()
+        # if should_std:
+        #     self._standardize()
 
         self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v
         self.predict = lambda x, a, b: a + b*x
@@ -164,31 +164,9 @@ class gped2DNormal_student(BNN):
     def U_simple_2D(self, theta_t):
         return 1/len(theta_t) * torch.sum(theta_t, axis=0)
 
-    # def _gposterior(self, gyis, theta_t, mis):
-    #     return torch.exp(self.log_joint(theta_t))
-
-    # def Ucirc(self, g_yis, theta_t, m_is, y, x_i):
-    #     g_yi = self.g(y, x_i, theta_t)
-    #     m_is_new = m_is + 1
-    #     g_yis_new = (m_is * g_yis + g_yi) / m_is_new
-    #     return g_yis_new, m_is_new
-
-    # def U_simple_2D(self,gyis, theta_t, t, opt, criterion):
-    #     # teacher_samples = torch.stack(theta_t)
-    #     gyis = 1/t * torch.sum(theta_t,axis=0)
-        
-    #     opt.zero_grad()
-
-    #     # pred = algo_student(phi, algo_teacher.x)   
-    #     target = algo_student(gyis, algo_teacher.x)
-
-    #     loss = criterion(target, gyis)
-    #     loss.backward()
-            
-    #     with torch.no_grad():
-    #         phi -= 1e-2 * phi.grad
-    #     return phi
-
+    def U_simple_predictive(self, theta_t):
+        ll =  self.log_likelihood(theta_t)
+        return 1/len(theta_t) * ll
 
 
 
@@ -224,9 +202,8 @@ def plot_distribution(ax, density_fun, color=None, visibility=1, label=None, tit
     ax.set(xlabel='slope', ylabel='intercept', xlim=(-4, 4), ylim=(-4, 4), title=title)
 
 
-def analytical_gradient(theta, Phi, ytrain, beta):
-
-    prior_cov = torch.eye(2)
+def analytical_gradient(theta, Phi, ytrain, beta, alpha):
+    prior_cov = 1/alpha*torch.eye(2)
 
     S0_inv = torch.inverse(prior_cov)
     Phi_T_Phi = torch.matmul(Phi.t(), Phi)
@@ -268,7 +245,7 @@ def MALA_step(theta, algo2D):
     return theta
 
 
-def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, f, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
+def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, f, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
     
     #Initialize for teacher
     theta = theta_init.detach().clone().requires_grad_(True)
@@ -279,6 +256,7 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
     phi = phi_init.detach().clone().requires_grad_(True)
     samples_phi_student = [None]*student_sampling
     s = 0
+    alphas = [1e-2]*student_sampling
 
     for t in range(T):
         # theta_grad = algo_teacher.log_joint_gradient(theta)
@@ -291,24 +269,19 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
         if t > burn_in and t % H == 0:  
             post_burn = t-burn_in+1                             
             teacher_samples = torch.stack(samples_theta_teacher[:post_burn])
-            # teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
 
-            # gyis = 1/(t-burn_in+1) * torch.sum(teacher_samples,axis=0)
-            # post_burn = t-burn_in+1
             gyis = algo_student.U_simple_2D(teacher_samples)
+            # gyis = algo_student.U_simple_predictive(teacher_samples)
 
             opt.zero_grad()
 
-            # pred = algo_student(phi, algo_teacher.x)   
-            # target = algo_student(gyis, algo_teacher.x)
             pred = f(phi, algo_student.x)
-            # target = f(gyis, algo_teacher.x)
 
             loss = criterion(gyis, pred)
             loss.backward()
             
             with torch.no_grad():
-                phi -= 1e-2 * phi.grad
+                phi -= alphas[s] * phi.grad
 
             samples_phi_student[s] = phi.detach().clone()
             phi.grad.zero_()
@@ -329,16 +302,17 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
 
 #SGLD
-def mcmc_SGLD(algo, theta_init, eps=1e-3, T=100):
+def mcmc_SGLD(algo, theta_init, eps=1e-2, T=100):
     theta = theta_init.detach().clone().requires_grad_(True)
 
     samples_theta = [None]*T
 
     for t in range(T):
         theta_grad = algo.log_joint_gradient(theta)
+
         with torch.no_grad():
             eta_t = torch.normal(mean=0.0, std=eps, size=theta.shape, dtype=theta.dtype, device=theta.device)
-            theta = theta + eps/2 * theta_grad + eta_t
+            theta = theta + eps**2 / 2 * theta_grad + eta_t
             
             samples_theta[t] = theta.detach().clone()
             if theta.grad is not None:
@@ -346,10 +320,10 @@ def mcmc_SGLD(algo, theta_init, eps=1e-3, T=100):
 
             # print(t)
             # eps = 12/algo.N * (t+1)**(-0.55)
-            eps = 12/algo.N * (t+1)**(-0.90)
+            # eps = 12/algo.N * (t+1)**(-0.90)
 
 
-            eps = eps**1/2 #normal uses std and not variance
+            # eps = eps**1/2 #normal uses std and not variance
 
     return torch.stack(samples_theta)
 
@@ -363,9 +337,11 @@ def mcmc_ULA(algo, theta_init,lr=1e-2, T=100):
     for t in range(T):
         theta_grad = algo.log_joint_gradient(theta)
         with torch.no_grad():
+            
             #update teacher
             noise = torch.randn_like(theta_grad)*zt
             theta_grad_update = (lr/2) * theta_grad + noise
+
             theta.add_(theta_grad_update)
             samples_theta[t] = theta.detach().clone()
 
