@@ -12,7 +12,8 @@ class BNN:
 
     def gradient_log_joint():
         pass
-
+    
+    #def U():
 
 
 class gped2DNormal(BNN):
@@ -98,6 +99,10 @@ class gped2DNormal(BNN):
         # return self.log_joint(theta).grad.detach()
         return torch.autograd.grad(self.log_joint(theta), theta,create_graph=False)[0]
 
+
+    def U_gaussian_simple_2D(phi, gyis, S, loss):
+        return None
+        
 
 
 class gped2DNormal_student(BNN):
@@ -236,9 +241,6 @@ def MALA_step(theta, algo2D):
     return theta
 
 
-
-
-
 def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
     
     #Initialize for teacher
@@ -261,6 +263,7 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
         if t > burn_in and t % H == 0:                               
             teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
+
             gyis = 1/(t-burn_in+1) * torch.sum(teacher_samples,axis=0)
             opt.zero_grad()
 
@@ -269,7 +272,7 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
             loss = criterion(target, pred)
             loss.backward()
-
+            
             with torch.no_grad():
                 phi -= 1e-2 * phi.grad
 
@@ -291,7 +294,7 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
 
 #SGLD
-def mcmc_SGLD(algo, theta_init, eps=1e-9, T=100):
+def mcmc_SGLD(algo, theta_init, eps=1e-3, T=100):
     theta = theta_init.detach().clone().requires_grad_(True)
 
     samples_theta = [None]*T
@@ -302,15 +305,13 @@ def mcmc_SGLD(algo, theta_init, eps=1e-9, T=100):
             eta_t = torch.normal(mean=0.0, std=eps, size=theta.shape, dtype=theta.dtype, device=theta.device)
             theta = theta + eps/2 * theta_grad + eta_t
             
-            # theta.add_(delta_theta)
-
             samples_theta[t] = theta.detach().clone()
             if theta.grad is not None:
                 theta.grad.zero_()
 
             # print(t)
             # eps = 12/algo.N * (t+1)**(-0.55)
-            eps = 12/algo.N * (t+1)**(-0.99)
+            eps = 12/algo.N * (t+1)**(-0.90)
 
 
             eps = eps**1/2 #normal uses std and not variance
