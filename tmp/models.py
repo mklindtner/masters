@@ -17,7 +17,7 @@ class BNN:
 
 
 class gped2DNormal(BNN):
-    def __init__(self,x,y,batch_sz, alpha, beta, prior_mean,D, sim=True):
+    def __init__(self,x,y,batch_sz, alpha, beta, prior_mean,D, sim=True, should_std = True):
         self.alpha = alpha
         self.beta = beta
         self.prior = MultivariateNormal(prior_mean,covariance_matrix=1/self.alpha * torch.eye(D))
@@ -27,7 +27,8 @@ class gped2DNormal(BNN):
         self.sim = sim
         self.N = len(x)
         self.M = batch_sz
-        self._standardize()
+        if should_std:
+            self._standardize()
 
         self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v
         self.predict = lambda x, a, b: a + b*x
@@ -100,22 +101,31 @@ class gped2DNormal(BNN):
         return torch.autograd.grad(self.log_joint(theta), theta,create_graph=False)[0]
 
 
-    def U_gaussian_simple_2D(phi, gyis, S, loss):
-        return None
         
 
 
 class gped2DNormal_student(BNN):
 
-    def __init__(self, x,y, batch_sz, g, alpha, beta, prior_mean, D=2):
+    def __init__(self, x,y, batch_sz, prior_mean, alpha, beta, D=2, should_std = True):
         self.x = x
         self.y = y
         self.batch_sz = batch_sz
-        self.g = self._gposterior
+        self.alpha = alpha
         self.log_npdf = lambda x, m, v: -0.5*np.log(2*np.pi*v) -0.5*(x-m)**2/v
         self.prior = MultivariateNormal(prior_mean,covariance_matrix=1/self.alpha * torch.eye(D))
 
         self.predict = lambda x, a, b: a + b*x
+        if should_std:
+            self._standardize()
+
+    def _standardize(self):
+        x_mean = torch.mean(self.x)
+        x_std = torch.std(self.x)
+        self.x = (self.x - x_mean) / x_std
+
+        y_mean = torch.mean(self.y)
+        y_std = torch.std(self.y)
+        self.y = (self.y - y_mean) / y_std
 
     def log_prior(self,theta):
         return self.prior.log_prob(theta)
@@ -151,9 +161,11 @@ class gped2DNormal_student(BNN):
     def Us(self, gyis, theta_t, mis):
         return self.g(gyis, theta_t, mis)
 
+    def U_simple_2D(self, theta_t):
+        return 1/len(theta_t) * torch.sum(theta_t, axis=0)
 
-    def _gposterior(self, gyis, theta_t, mis):
-        return torch.exp(self.log_joint(theta_t))
+    # def _gposterior(self, gyis, theta_t, mis):
+    #     return torch.exp(self.log_joint(theta_t))
 
     # def Ucirc(self, g_yis, theta_t, m_is, y, x_i):
     #     g_yi = self.g(y, x_i, theta_t)
@@ -161,6 +173,21 @@ class gped2DNormal_student(BNN):
     #     g_yis_new = (m_is * g_yis + g_yi) / m_is_new
     #     return g_yis_new, m_is_new
 
+    # def U_simple_2D(self,gyis, theta_t, t, opt, criterion):
+    #     # teacher_samples = torch.stack(theta_t)
+    #     gyis = 1/t * torch.sum(theta_t,axis=0)
+        
+    #     opt.zero_grad()
+
+    #     # pred = algo_student(phi, algo_teacher.x)   
+    #     target = algo_student(gyis, algo_teacher.x)
+
+    #     loss = criterion(target, gyis)
+    #     loss.backward()
+            
+    #     with torch.no_grad():
+    #         phi -= 1e-2 * phi.grad
+    #     return phi
 
 
 
@@ -241,7 +268,7 @@ def MALA_step(theta, algo2D):
     return theta
 
 
-def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
+def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, phi_init, f, alphas, criterion, reg, opt, eps=1e-2, T=100, H=10, burn_in=100):
     
     #Initialize for teacher
     theta = theta_init.detach().clone().requires_grad_(True)
@@ -261,16 +288,23 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
         samples_theta_teacher[t] = theta.detach().clone().requires_grad_(True)
 
-        if t > burn_in and t % H == 0:                               
-            teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
+        if t > burn_in and t % H == 0:  
+            post_burn = t-burn_in+1                             
+            teacher_samples = torch.stack(samples_theta_teacher[:post_burn])
+            # teacher_samples = torch.stack(samples_theta_teacher[burn_in+1:t])
 
-            gyis = 1/(t-burn_in+1) * torch.sum(teacher_samples,axis=0)
+            # gyis = 1/(t-burn_in+1) * torch.sum(teacher_samples,axis=0)
+            # post_burn = t-burn_in+1
+            gyis = algo_student.U_simple_2D(teacher_samples)
+
             opt.zero_grad()
 
-            pred = algo_student(phi, algo_teacher.x)   
-            target = algo_student(gyis, algo_teacher.x)
+            # pred = algo_student(phi, algo_teacher.x)   
+            # target = algo_student(gyis, algo_teacher.x)
+            pred = f(phi, algo_student.x)
+            # target = f(gyis, algo_teacher.x)
 
-            loss = criterion(target, pred)
+            loss = criterion(gyis, pred)
             loss.backward()
             
             with torch.no_grad():
@@ -279,6 +313,7 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
             samples_phi_student[s] = phi.detach().clone()
             phi.grad.zero_()
             opt.step()
+
             # print(s)
             s += 1
 
