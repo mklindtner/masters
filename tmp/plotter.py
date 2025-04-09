@@ -1,9 +1,9 @@
 from models import plot_distribution, mcmc_MALA, mcmc_SGLD, mcmc_ULA
 import matplotlib.pyplot as plt
-from torch.distributions import kl_divergence
+# from torch.distributions import kl_divergence
 import torch
 import numpy as np
-from statistics import weight_kl, E_weights, quantiles, row_statistic, row_statistic_actual
+from statistics import weight_kl, sampler_row_statistic
 from torch.distributions.multivariate_normal import MultivariateNormal
 
 
@@ -30,9 +30,6 @@ def plot_actual(axes, algo2D, w_MAP, w_MLE):
 def plotter(w, algo2D, w_MAP, w_MLE):
     _, axes = plt.subplots(1, 3, figsize=(18,6))
     axes[2].plot(w[:,1],w[:,0], "ro", label="estimated weights")
-    # axes[2].plot(w[:,0],w[:,1], "yo", label="estimated weights opposite")
-
-    # axes[2].plot(w_MAP[1],w_MAP[0], "bo")
     algo2D.sim = False
     plot_distribution(axes[1],density_fun=algo2D.log_likelihood, color='r', label='likelihood', title='Likelihood', visibility=0.25)
     plot_distribution(axes[2],density_fun=algo2D.log_joint, color='g', label='Posterior', title='Posterior', visibility=0.25)
@@ -55,9 +52,8 @@ def plot_mcmc(axis,name, w, algo2D, w_MAP):
 
 
 def plot_all_MCMC(algo2D, w_MAP):
-    w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, lr = 1e-2)
+    w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, eps = 1e-2)
     w_MALA = mcmc_MALA(algo2D, theta_init=w_MAP, T=1000)
-    # w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0], requires_grad=True), T=1000)
     w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
 
     # #Plot all mcmc
@@ -70,24 +66,31 @@ def plot_all_MCMC(algo2D, w_MAP):
 
 
 def plot_samplers_2D(axis, w_MALA, w_ULA, w_SGLD, target):
-    #for KL_divergence
+    
     sample_sz = w_MALA.shape[0]
-    KL_MALA, KL_ULA, KL_SGLD, KL_true = weight_kl(MALA_samples=w_MALA, ULA_samples=w_ULA, SGLD_samples=w_SGLD, target=target)
+    KL_MALA, KL_baseline, sample_true = weight_kl(W_samples=w_MALA, target=target)
+    KL_ULA, _,_ =  weight_kl(W_samples=w_ULA, target=target)
+    KL_SGLD, _,_= weight_kl(W_samples=w_SGLD, target=target) 
     
 
     t = torch.arange(0,sample_sz-5)
-    axis[0][1].axhline(KL_true, linestyle="--")
-    axis[0][1].plot(t, KL_MALA, label="MALA KL", color = "green")
-    axis[0][1].plot(t, KL_ULA, label="ULA KL", color ="red")
-    axis[0][1].plot(t, KL_SGLD, label="SGLD KL", color="purple")
-    
-    axis[0][1].legend(loc="upper right")
-    axis[0][1].grid(True)
-    axis[0][1].set(title="Sampler KL", xlabel="iterations", ylabel="KL_Divergence", ylim=(0,1))
+    t_sgld = torch.arange(0,sample_sz-200-5)
+    axis[1].axhline(KL_baseline, linestyle="--")
+    axis[1].plot(t, KL_MALA, label="MALA KL", color = "green")
+    axis[1].plot(t, KL_ULA, label="ULA KL", color ="red")
+    axis[1].plot(t_sgld, KL_SGLD, label="SGLD KL", color="purple")
+    axis[1].legend(loc="upper right")
+    axis[1].grid(True)
+    axis[1].set(title="Sampler KL", xlabel="iterations", ylabel="KL_Divergence", ylim=(0,1))
 
-
-    #for Expectation of parameters
-    param_MALA, param_ULA, param_SGLD, param_true = posterior_params_samplers(w_MALA, w_ULA, w_SGLD, target)
+    row_labels = [r'MALA $\mu_0$, $\sigma_0$', r'MALA $\mu_1$, $\sigma_1$']
+    cell_txt = sampler_row_statistic(axis[0], w_MALA, [], row_labels)
+    row_labels += [r'ULA $\mu_0$, $\sigma_0$', r'ULA $\mu_1$, $\sigma_1$']
+    cell_txt = sampler_row_statistic(axis[0], w_ULA, cell_txt, row_labels)
+    row_labels += [r'SGLD $\mu_0$, $\sigma_0$', r'SGLD $\mu_1$, $\sigma_1$']
+    cell_txt = sampler_row_statistic(axis[0], w_SGLD, cell_txt, row_labels)
+    row_labels += [r'actual $\mu_0$, $\sigma_0$', r'actual $\mu_1$, $\sigma_1$']
+    sampler_row_statistic(axis[0],sample_true, cell_txt, row_labels)
 
 
     plt.tight_layout

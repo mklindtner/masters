@@ -5,80 +5,73 @@ import matplotlib.pyplot as plt
 
 
 
-def posterior_params_samplers(w_MALA, w_ULA, w_SGLD, target):
-    w_MALA = torch.mean()
-
-
-
-def weight_kl(MALA_samples, ULA_samples, SGLD_samples, target):
-    x = torch.arange(5,len(MALA_samples))
-    KL_MALA = [None]*len(x)
-    KL_ULA = [None]*len(x)
-    KL_SGLD = [None]*len(x)
-
-    for i, id in enumerate(x):
-        MALA_w_s = MALA_samples[0:id]
-        MALA_mhat = torch.mean(MALA_w_s, axis=0)
-        MALA_shat = torch.cov(MALA_w_s.T)
-        MALA_guess = MultivariateNormal(MALA_mhat, MALA_shat)
-        KL_MALA[i] = kl_divergence(MALA_guess, target).item()
-
-        ULA_w_s = ULA_samples[0:id]
-        ULA_mhat = torch.mean(ULA_w_s, axis=0)
-        ULA_shat = torch.cov(ULA_w_s.T)
-        ULA_guess = MultivariateNormal(ULA_mhat, ULA_shat)
-        KL_ULA[i] = kl_divergence(ULA_guess,target).item()
-
-        SGLD_w_s = SGLD_samples[0:id]
-        SGLD_mhat = torch.mean(SGLD_samples,axis=0)
-        SGLD_shat = torch.cov(SGLD_w_s.T)
-        SGLD_guess = MultivariateNormal(SGLD_mhat, SGLD_shat)
-        KL_SGLD[i] = kl_divergence(SGLD_guess, target).item()
+def weight_kl(W_samples, target):
+    x = torch.arange(5,len(W_samples))
+    W_stat = torch.zeros(len(W_samples)-5)    
+    sample_sz = W_samples.shape[0]
+    muhat = None; shat = None
     
-    sample_sz = MALA_samples.shape[0]
+    for i, id in enumerate(x):
+        w_s = W_samples[0:id]
+        W_est = torch.mean(w_s, axis=0)        
+        W_shat = torch.cov(w_s.T)
+        W_guess = MultivariateNormal(W_est, W_shat)
+        W_stat[i] = kl_divergence(W_guess, target).item()   
+
+
+    # pest_shat = torch.tensor([pest_shat[0,0], pest_shat[1,1]])
+       
+    
     target_samples = target.rsample((sample_sz,))
     mhat_true = torch.mean(target_samples,axis=0)
     shat_true = torch.cov(target_samples.T)
     sample_true = MultivariateNormal(mhat_true, shat_true)
     KL_true = kl_divergence(sample_true, target)
 
-    return KL_MALA, KL_ULA, KL_SGLD, KL_true
+    return W_stat, KL_true, target_samples
 
-def E_weights(W_samples):
-    return 1/len(W_samples) * torch.sum(W_samples,dim=0)
-
-
-def quantiles(W_samples):
-    beta0 = W_samples[:,0]
-    beta1 = W_samples[:,1]
-    quantiles = torch.tensor([0.025, 0.975], dtype=W_samples.dtype)
-    ci_beta0 = torch.quantile(beta0, quantiles)
-    ci_beta1 = torch.quantile(beta1, quantiles)
-    return ci_beta0, ci_beta1
+# def E_weights(W_samples):
+#     # return 1/len(W_samples) * torch.sum(W_samples,dim=0)
+#     muhat = torch.mean(W_samples, axis=0)
+#     shat = torch.cov(W_samples.T)
+#     foo = MultivariateNormal(muhat, shat).samples((len(W_samples),))
+#     return torch.mean(foo), 
 
 
-def row_statistic(ax, W_samples):
-    expectation_weights = E_weights(W_samples)
-    ci_beta0, ci_beta1 = quantiles(W_samples)        
-    cell_txt = []
+# def quantiles_mu(statistic):
+#     # beta0 = statistic[:,0]
+#     # beta1 = statistic[:,1]
+#     quantiles = torch.tensor([0.025, 0.975], dtype=statistic.dtype)
+#     ci_beta0 = torch.quantile(statistic[0,0], quantiles)
+#     ci_beta1 = torch.quantile(statistic[0,1], quantiles)
+#     return ci_beta0, ci_beta1
 
-    b0_mean_str = f"{expectation_weights[0]:.3f}"
-    ci_beta0_str = f"({ci_beta0[0]:.3f},{ci_beta0[1]:.3f})"
-    b1_mean_str = f"{expectation_weights[1]:.3f}"
-    ci_beta1_str =  f"({ci_beta1[0]:.3f},{ci_beta1[1]:.3f})"
-    # b0_actual_str = f"{w_actual[:,0][0]:.3f}"
-    # b1_actual_str=  f"{w_actual[:,1][0]:.3f}"
+# def quantiles_var(statistic):
+#     quantiles = torch.tensor([0.025, 0.975], dtype=statistic.dtype)
+#     return torch.quantile(statistic, )
 
-    cell_txt = [
-        [b0_mean_str, ci_beta0_str],
-        [b1_mean_str, ci_beta1_str]
-        # [b0_actual_str, "-"], 
-        # [b1_actual_str, "-"]
-    ]
+# def quantile_M_S(): 
 
-    # row_labels = [r'$\beta_0$', r'$\beta_1$', r'actual $\beta_0$', r'actual $\beta_1$']
-    row_labels = [r'$\beta_0$', r'$\beta_1$']
-    col_labels = ["Expectation", "95% Credible Interval"]
+# def table_statistics(ax, MALA_samples, ULA_samples, SGLD_samples, target):
+
+
+
+def sampler_row_statistic(ax, W_samples, cell_txt, row_labels):
+
+    quantiles = torch.tensor([0.025, 0.975])
+    ci_mu1 = torch.quantile(W_samples[:,0], quantiles)
+    ci_mu2 = torch.quantile(W_samples[:,1], quantiles)
+    sigmahat_ = torch.cov(W_samples.T)
+
+
+    muhat0_str = f"({ci_mu1[0]:.3f}, {ci_mu1[1]:.3f})"
+    muhat1_str = f"({ci_mu2[0]:.3f}, {ci_mu2[1]:.3f})"
+
+    cell_txt.append([muhat0_str, f"{sigmahat_[0,0]:.3f}"])
+    cell_txt.append([muhat1_str, f"{sigmahat_[1,1]:.3f}"])
+
+
+    col_labels = [r'95% CI', r'Variance Point estimate ']
 
     ax.axis('off') # Turn off axis lines and ticks for the table plot
     table = ax.table(cellText=cell_txt,
@@ -90,8 +83,9 @@ def row_statistic(ax, W_samples):
     # Adjust formatting
     table.auto_set_font_size(False)
     table.set_fontsize(10)
-    table.scale(1.2, 1.5) # Adjust width and height scaling factors
-    # ax.set_title("Sample Statistics")
+    table.scale(1.0, 1.5) # Adjust width and height scaling factors
+    ax.set_title("Statistics")
+    return cell_txt
 
 def row_statistic_actual(ax, W):
     b0_mean_str = f"{W[:,0].item():.3f}"
