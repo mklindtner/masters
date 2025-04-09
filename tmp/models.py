@@ -214,15 +214,15 @@ def analytical_gradient(theta, Phi, ytrain, beta, alpha):
     return grad, m
 
 
-def SGLD_step(theta, theta_grad, eps, N, t):
-    eta_t = torch.normal(mean=0.0, std=eps, size=theta.shape, dtype=theta.dtype, device=theta.device)
-    delta_theta = eps/2 * theta_grad + eta_t
-    theta.add_(delta_theta)
-    theta.grad.zero_()
+def SGLD_step(theta, algo2D, t):
+    eps = 1/(t**0.75+1)
+    if eps > 1e-2:
+        eps = 1e-2
+    eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape)
 
-    eps = 12/N * (t+1)**(-0.55)
-    eps = eps**0.5 #normal uses std and not variance
-    return theta, eps
+    theta_grad = eta_t / 2 * algo2D.log_joint_gradient(theta) + eta_t
+    
+    return theta_grad
 
 
 def MALA_step(theta, algo2D):
@@ -255,10 +255,11 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
     s = 0
     alphas = [1e-2]*student_sampling
 
+
     for t in range(T):
         # theta_grad = algo_teacher.log_joint_gradient(theta)
-        theta = MALA_step(theta, algo2D=algo_teacher)
-
+        # theta = MALA_step(theta, algo2D=algo_teacher)
+        theta = SGLD_step(theta, algo2D=algo_teacher, t=t)
         # theta, eps = SGLD_step(theta, theta_grad, eps, algo_teacher.N, t)
 
         samples_theta_teacher[t] = theta.detach().clone().requires_grad_(True)

@@ -97,6 +97,14 @@ def plot_samplers_2D(axis, w_MALA, w_ULA, w_SGLD, target):
     plt.show()
 
 
+def plot_sample_2D_solo(axes, w_sample, target, cell_txt, row_label, color='green'):
+    KL_Sample, KL_baseline, _ = weight_kl(W_samples=w_sample, target=target)
+    t = torch.arange(0,len(w_sample)-5)
+    axes[1].axhline(KL_baseline, linestyle="--")
+    axes[1].plot(t, KL_Sample, label="Teacher KL", color = color)
+    # row_labels = [r'Teacher $\mu_0$, $\sigma_0$', r'Teacher $\mu_1$, $\sigma_1$']
+    # cell_txt = sampler_row_statistic(axes[0], w_sample, cell_txt, row_label)
+    # return  cell_txt
 
 
 
@@ -121,3 +129,6 @@ def plot_simple_student_2D(axes, w_teacher, w_student, algo2D, w_MAP, w_MLE):
     axes[5][2].axis("off")
     plt.tight_layout()
 
+
+
+    
