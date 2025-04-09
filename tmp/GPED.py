@@ -42,7 +42,7 @@ M = beta*S@Phi_train.T @ algo2D.y
 target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 
 #Sampling
-T = 2000
+T = 10000
 # w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0]), T=T)
 # w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=T, eps = 1e-2)
 w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=T)
@@ -65,13 +65,14 @@ def algo_student_reg(w, x):
     inputs = torch.column_stack((torch.ones(len(x)), x))
     return inputs @ w[:,None]
 
-w_teacher, w_student = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo2D_student_simple, theta_init=w_MAP, phi_init=w_MAP, f=algo_student_reg , reg=None,criterion=loss, opt=adam, T=2000)
+w_teacher, w_student = posterior_expectation_distillation(algo_teacher=algo2D, algo_student=algo2D_student_simple, theta_init=w_MAP, phi_init=w_MAP, f=algo_student_reg , reg=None,criterion=loss, opt=adam, T=T)
 
 _, axes = plt.subplots(1,2, figsize=(12,9))
 
 row_labels = [r'SGLD Teacher $\mu_0$, $\sigma_0$', r'SGLD Teacher $\mu_1$, $\sigma_1$']
-plot_sample_2D_solo(axes, w_teacher, target, [], row_labels)
-plot_sample_2D_solo(axes, w_SGLD, target, None, row_labels, color='red')
+plot_sample_2D_solo(axes, w_teacher, target, [], row_labels, label = "Teacher")
+plot_sample_2D_solo(axes, w_SGLD, target, None, row_labels, color='red', label = "SGLD")
+plot_sample_2D_solo(axes, w_student, target, None, row_labels, color='purple', label = "Student")
 
 
 plt.tight_layout

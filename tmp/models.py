@@ -214,15 +214,23 @@ def analytical_gradient(theta, Phi, ytrain, beta, alpha):
     return grad, m
 
 
-def SGLD_step(theta, algo2D, t):
+def SGLD_step(theta_init, algo2D, t):
+    theta = theta_init.detach().clone().requires_grad_(True)
+
     eps = 1/(t**0.75+1)
     if eps > 1e-2:
         eps = 1e-2
-    eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape)
+        
+    theta_grad = algo2D.log_joint_gradient(theta) 
+    with torch.no_grad():
+        eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape)
+        delta_theta = eps / 2 * theta_grad + eta_t
+        theta += delta_theta
 
-    theta_grad = eta_t / 2 * algo2D.log_joint_gradient(theta) + eta_t
-    
-    return theta_grad
+        if theta.grad is not None:
+            theta.grad.zero_()
+
+    return theta
 
 
 def MALA_step(theta, algo2D):
@@ -257,10 +265,8 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
 
     for t in range(T):
-        # theta_grad = algo_teacher.log_joint_gradient(theta)
         # theta = MALA_step(theta, algo2D=algo_teacher)
         theta = SGLD_step(theta, algo2D=algo_teacher, t=t)
-        # theta, eps = SGLD_step(theta, theta_grad, eps, algo_teacher.N, t)
 
         samples_theta_teacher[t] = theta.detach().clone().requires_grad_(True)
 
@@ -314,6 +320,7 @@ def mcmc_SGLD(algo, theta_init, eps=1e-2, T=1000):
             eps = 1e-2
         if t < burn_in:
             continue
+
         with torch.no_grad():
             eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape, dtype=theta.dtype, device=theta.device)
             theta += (eps / 2) * theta_grad + eta_t
