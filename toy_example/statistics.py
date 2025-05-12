@@ -17,9 +17,6 @@ def weight_kl(W_samples, target):
         W_shat = torch.cov(w_s.T)
         W_guess = MultivariateNormal(W_est, W_shat)
         W_stat[i] = kl_divergence(W_guess, target).item()   
-
-
-    # pest_shat = torch.tensor([pest_shat[0,0], pest_shat[1,1]])
        
     
     target_samples = target.rsample((sample_sz,))
@@ -29,30 +26,6 @@ def weight_kl(W_samples, target):
     KL_true = kl_divergence(sample_true, target)
 
     return W_stat, KL_true, target_samples
-
-# def E_weights(W_samples):
-#     # return 1/len(W_samples) * torch.sum(W_samples,dim=0)
-#     muhat = torch.mean(W_samples, axis=0)
-#     shat = torch.cov(W_samples.T)
-#     foo = MultivariateNormal(muhat, shat).samples((len(W_samples),))
-#     return torch.mean(foo), 
-
-
-# def quantiles_mu(statistic):
-#     # beta0 = statistic[:,0]
-#     # beta1 = statistic[:,1]
-#     quantiles = torch.tensor([0.025, 0.975], dtype=statistic.dtype)
-#     ci_beta0 = torch.quantile(statistic[0,0], quantiles)
-#     ci_beta1 = torch.quantile(statistic[0,1], quantiles)
-#     return ci_beta0, ci_beta1
-
-# def quantiles_var(statistic):
-#     quantiles = torch.tensor([0.025, 0.975], dtype=statistic.dtype)
-#     return torch.quantile(statistic, )
-
-# def quantile_M_S(): 
-
-# def table_statistics(ax, MALA_samples, ULA_samples, SGLD_samples, target):
 
 
 
@@ -71,7 +44,7 @@ def sampler_row_statistic(ax, W_samples, cell_txt, row_labels):
     cell_txt.append([muhat1_str, f"{sigmahat_[1,1]:.3f}"])
 
 
-    col_labels = [r'95% CI', r'Variance Point estimate ']
+    col_labels = [r'$\mu$ 95% CI', r'Variance Point estimate ']
 
     ax.axis('off') # Turn off axis lines and ticks for the table plot
     table = ax.table(cellText=cell_txt,
@@ -79,12 +52,12 @@ def sampler_row_statistic(ax, W_samples, cell_txt, row_labels):
                      colLabels=col_labels,
                      loc='center',       # Position table in the center
                      cellLoc='center')   # Center text within cells
-    
     # Adjust formatting
     table.auto_set_font_size(False)
     table.set_fontsize(10)
     table.scale(1.0, 1.5) # Adjust width and height scaling factors
-    ax.set_title("Statistics")
+    # ax.set_title("Statistics")
+    ax.set_title("Marginal statistics")
     return cell_txt
 
 def row_statistic_actual(ax, W):

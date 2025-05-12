@@ -75,26 +75,30 @@ def plot_samplers_2D(axis, w_MALA, w_ULA, w_SGLD, target):
 
     t = torch.arange(0,sample_sz-5)
     t_sgld = torch.arange(0,sample_sz-200-5)
-    axis[1].axhline(KL_baseline, linestyle="--")
-    axis[1].plot(t, KL_MALA, label="MALA KL", color = "green")
-    axis[1].plot(t, KL_ULA, label="ULA KL", color ="red")
-    axis[1].plot(t_sgld, KL_SGLD, label="SGLD KL", color="purple")
-    axis[1].legend(loc="upper right")
-    axis[1].grid(True)
-    axis[1].set(title="Sampler KL", xlabel="iterations", ylabel="KL_Divergence", ylim=(0,1))
+    axis.axhline(KL_baseline, label="Random Sample from Analytical posterior", linestyle="--")
+    axis.plot(t, KL_MALA, label="MALA KL", color = "green")
+    axis.plot(t, KL_ULA, label="ULA KL", color ="red")
+    axis.plot(t_sgld, KL_SGLD, label="SGLD KL", color="purple")
+    axis.legend(loc="upper right")
+    axis.grid(True)
+    axis.set(title="Sampler KL", xlabel="iterations", ylabel="KL_Divergence", ylim=(0,0.1))
+    # axis[0][1].
 
-    row_labels = [r'MALA $\mu_0$, $\sigma_0$', r'MALA $\mu_1$, $\sigma_1$']
-    cell_txt = sampler_row_statistic(axis[0], w_MALA, [], row_labels)
-    row_labels += [r'ULA $\mu_0$, $\sigma_0$', r'ULA $\mu_1$, $\sigma_1$']
-    cell_txt = sampler_row_statistic(axis[0], w_ULA, cell_txt, row_labels)
-    row_labels += [r'SGLD $\mu_0$, $\sigma_0$', r'SGLD $\mu_1$, $\sigma_1$']
-    cell_txt = sampler_row_statistic(axis[0], w_SGLD, cell_txt, row_labels)
-    row_labels += [r'actual $\mu_0$, $\sigma_0$', r'actual $\mu_1$, $\sigma_1$']
-    sampler_row_statistic(axis[0],sample_true, cell_txt, row_labels)
+    # row_labels = [r'MALA $\mu_0$, $\sigma_0$', r'MALA $\mu_1$, $\sigma_1$']
+    # cell_txt = sampler_row_statistic(axis[0][0], w_MALA, [], row_labels)
+    # row_labels += [r'ULA $\mu_0$, $\sigma_0$', r'ULA $\mu_1$, $\sigma_1$']
+    # cell_txt = sampler_row_statistic(axis[0][0], w_ULA, cell_txt, row_labels)
+    # row_labels += [r'SGLD $\mu_0$, $\sigma_0$', r'SGLD $\mu_1$, $\sigma_1$']
+    # cell_txt = sampler_row_statistic(axis[0][0], w_SGLD, cell_txt, row_labels)
+    # row_labels += [r'baseline $\mu_0$, $\sigma_0$', r'baseline $\mu_1$, $\sigma_1$']
+    # sampler_row_statistic(axis[0][0],sample_true, cell_txt, row_labels)
+    
 
+    # axis[1][0].plot(w_SGLD[:,0], w_SGLD[:,1], 'ro')
+    # axis[1][0].set(title="SGLD - Correlation mu0, mu1", xlabel="mu0", ylabel="mu1")
 
     plt.tight_layout
-    plt.show()
+    # plt.show()
 
 
 def plot_sample_2D_solo(axes, w_sample, target, cell_txt, row_label, color='green', label='foo'):

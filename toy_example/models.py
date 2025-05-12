@@ -220,7 +220,7 @@ def SGLD_step(theta_init, algo2D, t):
     eps = 1/(t**0.75+1)
     if eps > 1e-2:
         eps = 1e-2
-        
+
     theta_grad = algo2D.log_joint_gradient(theta) 
     with torch.no_grad():
         eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape)
@@ -348,15 +348,21 @@ def mcmc_ULA(algo, theta_init,eps=1e-2, T=100):
 
     for t in range(T):
         theta_grad = algo.log_joint_gradient(theta)
-        with torch.no_grad():            
-            #update teacher
-            noise = torch.randn_like(theta_grad)*zt
-            theta_grad_update = (eps/2) * theta_grad + noise
-            theta += theta_grad_update
-            # theta.add_(theta_grad_update)
-            samples_theta[t] = theta.detach().clone()
+        with torch.no_grad():  
 
-            theta.grad.zero_()
+            #Works but seem wrong?          
+            # noise = torch.randn_like(theta_grad)*zt
+            # theta_grad_update = (eps/2) * theta_grad + noise
+            # theta += theta_grad_update
+            # # theta.add_(theta_grad_update)
+            # samples_theta[t] = theta.detach().clone()
+            # theta.grad.zero_()
+            
+            #what I think it is
+            mu = theta + eps/2 * theta_grad
+            theta = MultivariateNormal(mu, eps*torch.eye(2)).rsample().clone().detach().requires_grad_(True)
+            samples_theta[t] = theta.detach().clone()
+            
     return torch.stack(samples_theta)
 
 #Mala
@@ -365,14 +371,12 @@ def mcmc_MALA(algo, theta_init, T=100, eps=1e-2):
     D = 2
     samples_theta = [None]*T
 
-    #Roberts & Rosenthal (1998) optimal scaling parameter but did not work
-        # h = 2.38**2 / D
-    # eps = 1e-2
     cov = eps*torch.eye(D)
 
     for t in range(T):
-        grad = algo.get_log_joint_gradient(theta)
-        mu =  theta + eps/2 * grad
+        # grad = algo.get_log_joint_gradient(theta)
+        grad = algo.log_joint_gradient(theta)
+        mu =  theta #+ eps/2 * grad
         proposal_dist = MultivariateNormal(mu,cov)
 
         # print(f"Step {t}: Gradient = {grad}, Proposal Mean (mu) = {mu}")
@@ -387,7 +391,6 @@ def mcmc_MALA(algo, theta_init, T=100, eps=1e-2):
 #assumes they are in log space
 def metropolis_step(x,proposal_dist, pi_dist):
     xprime = proposal_dist.sample()
-    # print(f"{xprime[0].item()}, {xprime[1].item()}", pi_dist(x).item())
     proposal = pi_dist(xprime) - pi_dist(x)
 
     #domian check
@@ -395,7 +398,6 @@ def metropolis_step(x,proposal_dist, pi_dist):
 
 
     u = torch.rand(1)
-    #print(u.item(), torch.exp(log_proposal).item(), sep=",")
     if u < torch.exp(log_proposal):
         return xprime
     return x
@@ -403,6 +405,12 @@ def metropolis_step(x,proposal_dist, pi_dist):
 
 #pMALA
 
+
+
+#Etc.
+def algo_student_reg(w, x):
+    inputs = torch.column_stack((torch.ones(len(x)), x))
+    return inputs @ w[:,None]
 
 
 
