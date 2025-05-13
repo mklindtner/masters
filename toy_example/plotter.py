@@ -52,7 +52,7 @@ def plot_mcmc(axis,name, w, algo2D, w_MAP):
 
 
 def plot_all_MCMC(algo2D, w_MAP):
-    w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, eps = 1e-2)
+    w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=1000, h_sq = 1e-2)
     w_MALA = mcmc_MALA(algo2D, theta_init=w_MAP, T=1000)
     w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=1000)
 

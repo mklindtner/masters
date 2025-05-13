@@ -312,70 +312,82 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
 
 
-
-
-#SGLD
-def mcmc_SGLD(algo, theta_init, eps=1e-2, T=1000):
+def mcmc_SGLD(algo, theta_init, h_sq=1e-1, T=1000):
+    D = theta_init.shape[0]
     theta = theta_init.detach().clone().requires_grad_(True)
-
-    burn_in = 200
-    samples_theta = [None]*(T-burn_in)
-    id = 0
+    samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
+    a = 1e-6; b=1; gamma = 0.75
+    h_t_sq = h_sq
     for t in range(T):
-        theta_grad = algo.log_joint_gradient(theta)
-        #suggestions for eps
-        eps = 1/(t**0.75+1)
-        if eps > 1e-2:
-            eps = 1e-2
-        if t < burn_in:
-            continue
+        grad = algo.log_joint_gradient(theta)
+        if torch.isnan(grad).any() or torch.isinf(grad).any():
+            print(f"Warning: NaN/inf gradient at SGLD iteration {t}. Grad: {grad}")
+        
+        mean_proposal = theta + h_t_sq/2 *grad
+        if torch.isnan(mean_proposal).any() or torch.isinf(mean_proposal).any():
+            print(f"Warning: NaN/inf mean_proposal at SGLD iteration {t}. Mean: {mean_proposal}")
+        
+        theta = MultivariateNormal(mean_proposal, h_t_sq*torch.eye(D)).rsample().clone().detach().requires_grad_(True)
+        # if t < 200:
+        samples_theta[t] = theta.detach().clone()
+        h_t_sq = max(a/(b+t)**gamma,1e-12)
 
-        with torch.no_grad():
-            eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape, dtype=theta.dtype, device=theta.device)
-            theta += (eps / 2) * theta_grad + eta_t
+        
+    return samples_theta
+
+
+#works
+# #SGLD
+# def mcmc_SGLD(algo, theta_init, eps=1e-2, T=1000):
+#     theta = theta_init.detach().clone().requires_grad_(True)
+
+#     burn_in = 200
+#     samples_theta = [None]*(T-burn_in)
+#     id = 0
+#     for t in range(T):
+#         theta_grad = algo.log_joint_gradient(theta)
+#         #suggestions for eps
+#         eps = 1/(t**0.75+1)
+#         if eps > 1e-2:
+#             eps = 1e-2
+#         if t < burn_in:
+#             continue
+
+#         with torch.no_grad():
+#             eta_t = torch.normal(mean=0.0, std=math.sqrt(eps), size=theta.shape, dtype=theta.dtype, device=theta.device)
+#             theta += (eps / 2) * theta_grad + eta_t
             
-            samples_theta[id] = theta.detach().clone()
-            id += 1
-            if theta.grad is not None:
-                theta.grad.zero_()
+#             samples_theta[id] = theta.detach().clone()
+#             id += 1
+#             if theta.grad is not None:
+#                 theta.grad.zero_()
 
-            # print(t)
-            # eps = 12/algo.N * (t+1)**(-0.55)
-            # eps = 12/algo.N * (t+1)**(-0.90)
+#             # print(t)
+#             # eps = 12/algo.N * (t+1)**(-0.55)
+#             # eps = 12/algo.N * (t+1)**(-0.90)
 
 
-            # eps = eps**1/2 #normal uses std and not variance
+#             # eps = eps**1/2 #normal uses std and not variance
 
-    return torch.stack(samples_theta)
+#     return torch.stack(samples_theta)
 
 
 #ULA
-def mcmc_ULA(algo, theta_init,eps=1e-2, T=100):
+def mcmc_ULA(algo, theta_init, h_sq=1e-2, T=100):
+    D = theta_init.shape[0]
     theta = theta_init.detach().clone().requires_grad_(True)
-    zt = math.sqrt(2*eps)
-    samples_theta = [None]*(T)
+    samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
 
     for t in range(T):
         theta_grad = algo.log_joint_gradient(theta)
-        with torch.no_grad():  
+        theta = MultivariateNormal(theta + h_sq/2 * theta_grad, h_sq*torch.eye(D)).rsample().clone().detach().requires_grad_(True)
+        samples_theta[t] = theta.detach().clone()
+            
+    return samples_theta
 
-            #Works but seem wrong?          
-            # noise = torch.randn_like(theta_grad)*zt
-            # theta_grad_update = (eps/2) * theta_grad + noise
-            # theta += theta_grad_update
-            # # theta.add_(theta_grad_update)
-            # samples_theta[t] = theta.detach().clone()
-            # theta.grad.zero_()
-            
-            #what I think it is
-            mu = theta + eps/2 * theta_grad
-            theta = MultivariateNormal(mu, eps*torch.eye(2)).rsample().clone().detach().requires_grad_(True)
-            samples_theta[t] = theta.detach().clone()
-            
-    return torch.stack(samples_theta)
 
 #Mala
-def mcmc_MALA(algo, theta_init, T=100, h_sq=1e-2):
+def mcmc_MALA(algo, theta_init, T=100, h_sq=1e-1):
     D = theta_init.shape[0]
     
     theta = theta_init.detach().clone().requires_grad_(True)
