@@ -78,11 +78,20 @@ class gped2DNormal(BNN):
         if not theta.requires_grad:
             theta = theta.requires_grad_(True)
 
-        # Zero the gradient before computing the new gradient
+        # Zero the gradient before computing the new gradient        
         if theta.grad is not None:
             theta.grad.zero_()
 
         self.log_joint(theta).backward()
+
+        if theta.grad is None:
+            raise RuntimeError(
+                "theta_val.grad is None after backward(). "
+                "This means self.log_joint(theta_val) does not depend on theta_val "
+                "in a way that autograd can track, or theta_val was not a leaf node "
+                "with requires_grad=True for the log_joint computation graph, "
+                "or the graph was broken."
+            )            
         return theta.grad.detach()
 
     #e.g. for MALA bcs it only needs the gradient of the target distribution and not change the gradient
@@ -112,8 +121,8 @@ class gped2DNormal_student(BNN):
         self.prior = MultivariateNormal(prior_mean,covariance_matrix=1/self.alpha * torch.eye(D))
 
         self.predict = lambda x, a, b: a + b*x
-        if should_std:
-            self._standardize()
+        # if should_std:
+        #     self._standardize()
 
     def _standardize(self):
         x_mean = torch.mean(self.x)
@@ -366,28 +375,43 @@ def mcmc_ULA(algo, theta_init,eps=1e-2, T=100):
     return torch.stack(samples_theta)
 
 #Mala
-def mcmc_MALA(algo, theta_init, T=100, eps=1e-2):
+def mcmc_MALA(algo, theta_init, T=100, h_sq=1e-2):
+    D = theta_init.shape[0]
+    
     theta = theta_init.detach().clone().requires_grad_(True)
-    D = 2
-    samples_theta = [None]*T
+    samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
 
-    cov = eps*torch.eye(D)
-
+    cov = h_sq*torch.eye(theta.shape[0])
+    
     for t in range(T):
-        # grad = algo.get_log_joint_gradient(theta)
-        grad = algo.log_joint_gradient(theta)
-        mu =  theta #+ eps/2 * grad
-        proposal_dist = MultivariateNormal(mu,cov)
+        grad = h_sq/2 * algo.log_joint_gradient(theta)
 
-        # print(f"Step {t}: Gradient = {grad}, Proposal Mean (mu) = {mu}")
 
-        theta = metropolis_step(theta, proposal_dist=proposal_dist, pi_dist=algo.log_joint)
+        # proposal (numerator)
+        thetaprime = MultivariateNormal(theta + grad, cov).rsample().clone().detach().requires_grad_(True)
+        
+
+        gradprime = h_sq/2 * algo.log_joint_gradient(thetaprime)
+        g_theta = MultivariateNormal(thetaprime + gradprime, cov)
+        log_proposal = algo.log_joint(thetaprime) + g_theta.log_prob(theta)
+
+        #current (denominator)
+        g_thetaprime = MultivariateNormal(theta + grad, cov)
+        log_current = algo.log_joint(theta) + g_thetaprime.log_prob(thetaprime)
+
+        #Metropolis choice
+        A = torch.min(torch.tensor(0), log_proposal - log_current)
+        u = torch.log(torch.rand(1))
+
+        if u <= A:
+            theta = thetaprime
         samples_theta[t] = theta.detach().clone()
 
-    return torch.stack(samples_theta)
+    # return torch.stack(samples_theta)
+    return samples_theta
 
 
-#Assume proposal distriubtion is symmetric
+
 #assumes they are in log space
 def metropolis_step(x,proposal_dist, pi_dist):
     xprime = proposal_dist.sample()

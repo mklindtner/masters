@@ -7,7 +7,7 @@ from toydata import algo2D, w_MAP, target
 
 #Sampling
 T = 1000
-w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0]), T=T, eps=1e-2/2)
+w_MALA = mcmc_MALA(algo2D, theta_init=torch.tensor([0.0,0.0]), T=T, h_sq=1e-2/2)
 w_ULA = mcmc_ULA(algo2D, theta_init=w_MAP, T=T, eps = 1e-2/2)
 w_SGLD = mcmc_SGLD(algo2D, theta_init=w_MAP, T=T, eps=1e-2/2)
 
