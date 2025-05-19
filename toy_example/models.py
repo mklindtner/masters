@@ -312,11 +312,13 @@ def posterior_expectation_distillation(algo_teacher, algo_student, theta_init, p
 
 
 
-def mcmc_SGLD(algo, theta_init, h_sq=1e-1, T=1000):
+def mcmc_SGLD(algo, theta_init, h_sq=1e-2, T=1000):
     D = theta_init.shape[0]
     theta = theta_init.detach().clone().requires_grad_(True)
     samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
-    a = 1e-6; b=1; gamma = 0.75
+    #a: scaling factor of step sizes, b: offset of step-size, gamma: 
+    #
+    a = 2.1*1e-1; b=1.65; gamma = 0.556
     h_t_sq = h_sq
     for t in range(T):
         grad = algo.log_joint_gradient(theta)
@@ -330,8 +332,7 @@ def mcmc_SGLD(algo, theta_init, h_sq=1e-1, T=1000):
         theta = MultivariateNormal(mean_proposal, h_t_sq*torch.eye(D)).rsample().clone().detach().requires_grad_(True)
         # if t < 200:
         samples_theta[t] = theta.detach().clone()
-        h_t_sq = max(a/(b+t)**gamma,1e-12)
-
+        h_t_sq = max(a/(b+t)**gamma,1e-7)
         
     return samples_theta
 
