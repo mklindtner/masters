@@ -1,4 +1,4 @@
-from toydata import theta_init, phi_init, target, algo2D
+from toydata import theta_init, phi_init, target, algo2D, MSEloss, f_student
 from statistics import weight_kl
 import torch
 import matplotlib.pyplot as plt
@@ -33,7 +33,7 @@ T = 3060
 
 SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
 distil_params = [100, 1000]
-distillation_samples, _ = distillation_expectation(algo2D, theta_init=theta_init, phi_init=phi_init, sgld_params=SGLD_params, distil_params=distil_params, T=T)
+distillation_samples, _ = distillation_expectation(algo2D, theta_init=theta_init, phi_init=phi_init, sgld_params=SGLD_params, distil_params=distil_params, f=f_student,loss=MSEloss, T=T)
 SGLD_samples = mcmc_SGLD(algo=algo2D, theta_init=theta_init, T=T)
 MALA_samples = mcmc_MALA(algo=algo2D, theta_init=theta_init, T=T)
 ULA_samples = mcmc_ULA(algo=algo2D, theta_init=theta_init, T=T)

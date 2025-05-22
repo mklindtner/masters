@@ -2,6 +2,9 @@ import torch
 from models import gped2DNormal, gped2DNormal_student, design_matrix
 from torch.distributions.multivariate_normal import MultivariateNormal
 import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+
 
 
 
@@ -33,3 +36,24 @@ w_MAP = (beta*torch.linalg.solve(alpha*torch.eye(2) + beta*(Phi_train.T@Phi_trai
 S = torch.inverse(alpha*torch.eye(2) + beta * Phi_train.T @ Phi_train)
 M = beta*S@Phi_train.T @ algo2D.y
 target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
+
+
+
+MSEloss = nn.MSELoss()
+class StudentToyData(nn.Module):
+    def __init__(self):
+        super(StudentToyData, self).__init__()
+        self.fc1 = nn.Linear(20, 10)
+        self.fc2 = nn.Linear(10, 5) 
+        self.fc4 = nn.Linear(5,2)  
+
+    def forward(self, x):
+        # x = x.view(-1, 784)
+        x = x.view(-1,20)  
+        x = F.relu(self.fc1(x)) 
+        x = F.relu(self.fc2(x))  
+        # x = F.relu(self.fc3(x))
+        x = self.fc4(x)
+        return x
+    
+f_student = StudentToyData()
