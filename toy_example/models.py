@@ -425,6 +425,27 @@ def mcmc_MALA(algo, theta_init, T=100, h_sq=1e-1):
 
 
 
+def MHRW(algo2D, theta_init, T=10000):
+    theta = theta_init.detach().clone().requires_grad_(True)
+    chain = [None]*T
+    eta = 1
+    for t in range(T):
+        thetaprime = theta.detach() + eta*torch.randn_like(theta)
+        #algo2D.log_joint(theta+g).item() would yield the same
+        log_proposal = (algo2D.log_likelihood(thetaprime) + algo2D.log_prior(thetaprime))
+        log_current = (algo2D.log_likelihood(theta) + algo2D.log_prior(theta))
+        
+        A = torch.min(torch.tensor([0]), log_proposal - log_current)
+        u = torch.log(torch.rand(1))
+        if u <= A:
+            theta = thetaprime
+            # print("chose propsal")
+        chain[t] = theta.detach().clone()
+        
+
+    return torch.stack(chain)
+
+
 #assumes they are in log space
 def metropolis_step(x,proposal_dist, pi_dist):
     xprime = proposal_dist.sample()

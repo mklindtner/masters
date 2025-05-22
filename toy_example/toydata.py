@@ -17,7 +17,7 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-T = 30600
+T = 3600
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
@@ -39,25 +39,29 @@ target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 
 
 
+g_mean = lambda x, w: w[:,0] + w[:,1]*x
+    
+
 class StudentToyData(nn.Module):
     def __init__(self):
         super(StudentToyData, self).__init__()
-        self.fc1 = nn.Linear(20, 10)
-        self.fc2 = nn.Linear(10, 5) 
-        self.fc4 = nn.Linear(5,2)  
+        self.fc1 = nn.Linear(20, 20)
+        self.fc2 = nn.Linear(20, 20)
+        # self.fc2 = nn.Linear(10, 5) 
+        # self.fc4 = nn.Linear(5,1)  
 
     def forward(self, x):
         # x = x.view(-1, 784)
         x = x.view(-1,20)  
         x = F.relu(self.fc1(x)) 
-        x = F.relu(self.fc2(x))  
+        # x = F.relu(self.fc2(x))  
         # x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+        x = self.fc2(x)
         return x
     
 MSEloss = nn.MSELoss()
-H = 100; burn_in = 1000
-distil_params = [burn_in, H]
+H = 100; burn_in = 1000; alpha_s = 1e-2
+distil_params = [burn_in, H,alpha_s]
 f_student = StudentToyData()
 SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
 phi_init = torch.tensor([0.0,0.0], requires_grad=True)

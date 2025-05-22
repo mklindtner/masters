@@ -12,8 +12,9 @@ def SGLD_step(theta, eta_t, grad):
 
 #Use the entire dataset for |S| and |S'|
 #Use alpha_s = 1 for all s
-def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_params, f, loss, T=10000):
+def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_params, f, g, loss, T=10000):
     D = theta_init.shape[0]
+    obs_shape = algo2D.x.T.shape[1]
 
     #Initiale SGLD weights
     a,b,gamma,eta_sq = sgld_params
@@ -21,42 +22,52 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
     samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
 
     #Inititalize distillation weights
-    burn_in, H = distil_params
+    burn_in, H,alpha_s = distil_params
     T_phi = int((T-burn_in) / H)
     t_phi = 0
     phi = phi_init.detach().clone().requires_grad_(True)
-    samples_phi = torch.empty((T_phi,D), dtype=phi.dtype, device=phi.device)
+
+    #samples for g(y,x,theta) = w_0 + w_1*x
+    samples_phi = torch.empty((T_phi,obs_shape), dtype=phi.dtype, device=phi.device)
 
     assert type(T_phi) == int, f"{T-burn_in / H} is not an integer, distillation epochs must be integers."
 
     #Inititalize optimizer etc.    
     ghat = 0
-    optimizer = optim.SGD(f.parameters(), lr=0.1)
+    optimizer = optim.SGD(f.parameters(), lr=alpha_s)
 
     for t in range(T):
         grad = algo2D.log_joint_gradient(theta)
+
+        if torch.isnan(grad).any():
+            print(f"NaN in SGLD gradient at t={t}. Stopping.")
+            break
+
         theta = SGLD_step(theta, eta_sq, grad)
         eta_sq = max(a/(b+t)**gamma,1e-7)         
 
         if t > burn_in and t % H == 0:
             #choose g(y,x,theta_t) = theta_t
-            ghat = theta.unsqueeze(0)    
+            gfoo = g(algo2D.x, samples_theta[:t])
+            ghat = (1/ len(samples_theta[:t]) * torch.sum(gfoo, 1)).unsqueeze(0)
+            # ghat = theta.unsqueeze(0)    
 
             gpred = f(algo2D.x.flatten())
             # loggpred = torch.log(gpred)
             if torch.isnan(gpred).any():
-                print("found NaN value uhohuh")
+                print("NaN in student at t={t}. Stopping.")
+            
             f.zero_grad()
             output = loss(ghat, gpred)
             output.backward()
             optimizer.step()
 
             #add phi weights here?
-            samples_phi[t_phi] = gpred
+            samples_phi[t_phi] = gpred.detach().clone().squeeze(0)
             t_phi += 1
             
 
-        samples_theta[t] = theta
+        samples_theta[t] = theta.detach().clone()
 
 
     return (samples_theta, samples_phi)
