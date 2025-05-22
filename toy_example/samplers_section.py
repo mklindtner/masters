@@ -1,4 +1,4 @@
-from toydata import theta_init, phi_init, target, algo2D, MSEloss, f_student
+from toydata import theta_init, phi_init, target, algo2D, MSEloss, f_student, SGLD_params, distil_params, T
 from statistics import weight_kl
 import torch
 import matplotlib.pyplot as plt
@@ -27,19 +27,6 @@ def MHRW(algo2D, theta_init, T=10000):
 
     return torch.stack(chain)
 
-
-
-T = 3060
-
-SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
-distil_params = [100, 1000]
-distillation_samples, _ = distillation_expectation(algo2D, theta_init=theta_init, phi_init=phi_init, sgld_params=SGLD_params, distil_params=distil_params, f=f_student,loss=MSEloss, T=T)
-SGLD_samples = mcmc_SGLD(algo=algo2D, theta_init=theta_init, T=T)
-MALA_samples = mcmc_MALA(algo=algo2D, theta_init=theta_init, T=T)
-ULA_samples = mcmc_ULA(algo=algo2D, theta_init=theta_init, T=T)
-RW_samples = MHRW(algo2D=algo2D, theta_init=theta_init, T=T)
-
-
 def kl_sample(W_samples, target,offset):
     D = W_samples[0].shape[0]
     x = torch.arange(offset,len(W_samples))
@@ -62,23 +49,39 @@ def kl_baseline(target, T):
     KL_true = kl_divergence(sample_true, target)
     return KL_true
 
+
+
+
+
+
+# SGLD_samples = mcmc_SGLD(algo=algo2D, theta_init=theta_init, T=T)
+# MALA_samples = mcmc_MALA(algo=algo2D, theta_init=theta_init, T=T)
+# ULA_samples = mcmc_ULA(algo=algo2D, theta_init=theta_init, T=T)
+# RW_samples = MHRW(algo2D=algo2D, theta_init=theta_init, T=T)
+teacher_samples, student_samples = distillation_expectation(algo2D, theta_init=theta_init, phi_init=phi_init, sgld_params=SGLD_params, distil_params=distil_params, f=f_student,loss=MSEloss, T=T)
+
+
 offset = 5
 sample_sz = T
-kl_rw = kl_sample(RW_samples, target, offset)
-kl_mala = kl_sample(MALA_samples, target, offset)
-kl_ula = kl_sample(ULA_samples, target, offset)
-kl_sgld = kl_sample(SGLD_samples, target, offset)
-kl_distillation_sgld = kl_sample(distillation_samples, target, offset)
+# kl_rw = kl_sample(RW_samples, target, offset)
+# kl_mala = kl_sample(MALA_samples, target, offset)
+# kl_ula = kl_sample(ULA_samples, target, offset)
+# kl_sgld = kl_sample(SGLD_samples, target, offset)
+kl_distillation_teacher = kl_sample(teacher_samples, target, offset)
+kl_distillation_student = kl_sample(student_samples, target, offset)
 kl_target = kl_baseline(target, sample_sz)
 
 t = torch.arange(5,sample_sz)
+burn_in, H = distil_params
+t_student = torch.arange(burn_in, T, H)[offset:]
 plt.axhline(kl_target, label="Random Sample from Analytical posterior", linestyle="--")
-plt.plot(t, kl_rw, label="MHRW KL", color = "green")
-plt.plot(t, kl_mala, label="MALA KL", color= "brown")
-plt.plot(t, kl_ula, label="ULA KL", color="blue")
-plt.plot(t, kl_sgld, label="SGLD KL", color="red")
-plt.plot(t, kl_distillation_sgld, label="distillation_sgld", color="purple")
-plt.ylim(0,0.2)
+# plt.plot(t, kl_rw, label="MHRW KL", color = "green")
+# plt.plot(t, kl_mala, label="MALA KL", color= "brown")
+# plt.plot(t, kl_ula, label="ULA KL", color="blue")
+# plt.plot(t, kl_sgld, label="SGLD KL", color="red")
+plt.plot(t, kl_distillation_teacher, label="distillation_teacher_samples", color="purple")
+plt.plot(t_student, kl_distillation_student, label="distillation_student_sampels", color="pink")
+# plt.ylim(0,0.2)       
 plt.legend()
 plt.tight_layout()
 plt.show()

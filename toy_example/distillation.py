@@ -21,7 +21,7 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
     samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
 
     #Inititalize distillation weights
-    H, burn_in = distil_params
+    burn_in, H = distil_params
     T_phi = int((T-burn_in) / H)
     t_phi = 0
     phi = phi_init.detach().clone().requires_grad_(True)
@@ -40,9 +40,12 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
 
         if t > burn_in and t % H == 0:
             #choose g(y,x,theta_t) = theta_t
-            ghat = theta    
-            gpred = torch.log(f(algo2D.x.flatten()))
+            ghat = theta.unsqueeze(0)    
 
+            gpred = f(algo2D.x.flatten())
+            # loggpred = torch.log(gpred)
+            if torch.isnan(gpred).any():
+                print("found NaN value uhohuh")
             f.zero_grad()
             output = loss(ghat, gpred)
             output.backward()

@@ -17,10 +17,10 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-# T = 30000
+T = 30600
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
-phi_init = torch.tensor([0.0,0.0], requires_grad=True)
+
 
 algo2D = gped2DNormal(xtrain,ytrain, batch_sz=len(xtrain), alpha=alpha, beta=beta, prior_mean=prior_mean, D=2)
 algo2D_student_simple = gped2DNormal_student(xtrain, ytrain, alpha=alpha, beta=beta, batch_sz=len(xtrain), prior_mean=prior_mean, D=2)
@@ -39,7 +39,6 @@ target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 
 
 
-MSEloss = nn.MSELoss()
 class StudentToyData(nn.Module):
     def __init__(self):
         super(StudentToyData, self).__init__()
@@ -56,4 +55,10 @@ class StudentToyData(nn.Module):
         x = self.fc4(x)
         return x
     
+MSEloss = nn.MSELoss()
+H = 100; burn_in = 1000
+distil_params = [burn_in, H]
 f_student = StudentToyData()
+SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
+phi_init = torch.tensor([0.0,0.0], requires_grad=True)
+
