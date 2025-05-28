@@ -4,4 +4,4 @@ __pycache__/*
 mnist/*
 tmp/__pycache__/*
 tmp/__pycache__/
-
+images/*

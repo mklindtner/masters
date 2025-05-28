@@ -1,6 +1,6 @@
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
-from toydata import StudentToyData
+from toydata import StudentToyDataSimple1
 import torch.optim as optim
 
 def SGLD_step(theta, eta_t, grad):
@@ -27,8 +27,12 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
     t_phi = 0
     phi = phi_init.detach().clone().requires_grad_(True)
 
-    #samples for g(y,x,theta) = w_0 + w_1*x
     samples_phi = torch.empty((T_phi,obs_shape), dtype=phi.dtype, device=phi.device)
+
+
+    #Initialize "student weight captures for various iterations"
+    samples_phi_iter = torch.empty((1, 2), dtype=phi.dtype, device=phi.device)
+    phi_iter_cnt = 0
 
     assert type(T_phi) == int, f"{T-burn_in / H} is not an integer, distillation epochs must be integers."
 
@@ -47,12 +51,13 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
         eta_sq = max(a/(b+t)**gamma,1e-7)         
 
         if t > burn_in and t % H == 0:
-            #choose g(y,x,theta_t) = theta_t
-            gfoo = g(algo2D.x, samples_theta[:t])
-            ghat = (1/ len(samples_theta[:t]) * torch.sum(gfoo, 1)).unsqueeze(0)
+            gfoo = g(algo2D.x, samples_theta[:t])            
+            ghat = torch.mean(gfoo, dim=1)
+            #Keep all samples in memory
+            
             # ghat = theta.unsqueeze(0)    
 
-            gpred = f(algo2D.x.flatten())
+            gpred = f(algo2D.x)
             # loggpred = torch.log(gpred)
             if torch.isnan(gpred).any():
                 print("NaN in student at t={t}. Stopping.")
@@ -63,11 +68,16 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
             optimizer.step()
 
             #add phi weights here?
-            samples_phi[t_phi] = gpred.detach().clone().squeeze(0)
+            samples_phi[t_phi] = gpred.detach().clone().squeeze(1)
             t_phi += 1
+            if phi_iter_cnt == 5:
+                samples_phi_iter[0,0] = f.fc1.bias.detach().clone()
+                samples_phi_iter[0,1] = f.fc1.weight.detach().clone()
+            
+            phi_iter_cnt += 1
             
 
         samples_theta[t] = theta.detach().clone()
 
 
-    return (samples_theta, samples_phi)
+    return (samples_theta, samples_phi, samples_phi_iter)

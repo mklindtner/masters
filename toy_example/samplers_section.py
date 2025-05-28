@@ -1,4 +1,4 @@
-from toydata import theta_init, phi_init, target, algo2D, MSEloss, f_student, SGLD_params, distil_params, T, g_mean
+from toydata import theta_init, phi_init, target, algo2D, MSEloss, f_student, SGLD_params, distil_params, T, g_bayesian_linear_reg
 from statistics import weight_kl
 import torch
 import matplotlib.pyplot as plt
@@ -61,6 +61,8 @@ plt.plot(t, kl_mala, label="MALA KL", color= "brown")
 plt.plot(t, kl_ula, label="ULA KL", color="blue")
 plt.plot(t, kl_sgld, label="SGLD KL", color="red")
 plt.ylim(0,1) 
+plt.xlabel("iterations")
+plt.ylabel("kl-divergence")
 plt.legend()
 plt.tight_layout()
 plt.show()
