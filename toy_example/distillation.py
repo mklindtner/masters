@@ -12,7 +12,7 @@ def SGLD_step(theta, eta_t, grad):
 
 #Use the entire dataset for |S| and |S'|
 #Use alpha_s = 1 for all s
-def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_params, f, g, loss, T=10000):
+def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_params, f, g, loss, T=10000, logger=None):
     D = theta_init.shape[0]
     obs_shape = algo2D.x.T.shape[1]
 
@@ -22,7 +22,9 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
     samples_theta = torch.empty((T,D), dtype=theta.dtype, device=theta.device)
 
     #Inititalize distillation weights
-    burn_in, H,alpha_s = distil_params
+    H,alpha_s = distil_params
+    burn_in = int(0.10*T)
+
     T_phi = int((T-burn_in) / H)
     t_phi = 0
     phi = phi_init.detach().clone().requires_grad_(True)
@@ -38,14 +40,13 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
 
     #Inititalize optimizer etc.    
     ghat = 0
-    optimizer = optim.SGD(f.parameters(), lr=alpha_s)
+    optimizer = optim.Adam(f.parameters(), lr=alpha_s)
 
     for t in range(T):
         grad = algo2D.log_joint_gradient(theta)
 
         if torch.isnan(grad).any():
-            print(f"NaN in SGLD gradient at t={t}. Stopping.")
-            break
+            raise(f"NaN in SGLD gradient at t={t}. Stopping.")
 
         theta = SGLD_step(theta, eta_sq, grad)
         eta_sq = max(a/(b+t)**gamma,1e-7)         
@@ -53,28 +54,39 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
         if t > burn_in and t % H == 0:
             gfoo = g(algo2D.x, samples_theta[:t])            
             ghat = torch.mean(gfoo, dim=1)
-            #Keep all samples in memory
-            
-            # ghat = theta.unsqueeze(0)    
 
+            #Keep all samples in memory            
             gpred = f(algo2D.x)
-            # loggpred = torch.log(gpred)
-            if torch.isnan(gpred).any():
-                print("NaN in student at t={t}. Stopping.")
-            
+
             f.zero_grad()
-            output = loss(ghat, gpred)
+            output = loss(ghat.view_as(gpred), gpred)
             output.backward()
+
+            if logger:
+                    w0_val = f.fc1.bias.item()
+                    w1_val = f.fc1.weight.item() 
+                    
+                    grad_w0 = f.fc1.bias.grad.item() 
+                    grad_w1 = f.fc1.weight.grad.item()
+                    
+                    logger.log_step(
+                        t_phi + 1, t, output.item(),
+                        w0_val, grad_w0, w1_val, grad_w1
+                    )
+            
+            # print(logger.get_dataframe())
+
             optimizer.step()
 
             #add phi weights here?
             samples_phi[t_phi] = gpred.detach().clone().squeeze(1)
             t_phi += 1
+
             if phi_iter_cnt == 5:
                 samples_phi_iter[0,0] = f.fc1.bias.detach().clone()
                 samples_phi_iter[0,1] = f.fc1.weight.detach().clone()
-            
             phi_iter_cnt += 1
+            
             
 
         samples_theta[t] = theta.detach().clone()

@@ -1,13 +1,23 @@
 from distillation import distillation_expectation
-from toydata import theta_init, phi_init, target, algo2D, MSEloss, f_student, SGLD_params, distil_params, T, g_bayesian_linear_reg, xtrain,ytrain, M
+from toydata import theta_init, phi_init, algo2D, MSEloss, f_student, SGLD_params, distil_params, T, g_bayesian_linear_reg, xtrain,ytrain, M
 import torch.linalg as LA
 import numpy as np # For plotting, if needed later
 import matplotlib.pyplot as plt # For plotting, if needed later
 import torch
+from debugging import StudentLogger, log_filename
 
 #student samples should be (samples, 20,2)??
-teacher_samples, student_samples, student_samples_few = distillation_expectation(algo2D, theta_init=theta_init, phi_init=phi_init, sgld_params=SGLD_params, distil_params=distil_params, f=f_student,g=g_bayesian_linear_reg ,loss=MSEloss, T=T)
 
+
+with StudentLogger(log_filepath=log_filename) as student_logger:
+    teacher_samples, student_samples, student_samples_few = distillation_expectation(
+            algo2D, theta_init=theta_init, phi_init=phi_init, 
+            sgld_params=SGLD_params, distil_params=distil_params, 
+            f=f_student,g=g_bayesian_linear_reg,
+            loss=MSEloss, T=T, 
+            logger=student_logger
+        )
+    # print(student_logger.get_dataframe())
 
 
 #Analytical and last sample for regression line
@@ -25,6 +35,7 @@ yhat_st_five = student_samples_few[0,0] + student_samples_few[0,1]*algo2D.x
 
 #Plot over time w. norms values
 # plt.plot(np.arange(len(l2_norms_over_time)), l2_norms_over_time.numpy(), marker='o', linestyle='-')
+
 
 
 

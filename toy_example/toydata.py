@@ -17,7 +17,7 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-T = 1000
+T = 10000
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
@@ -63,8 +63,9 @@ class StudentToyDataSimple1(nn.Module):
         return x
     
 MSEloss = nn.MSELoss()
-H = 100; burn_in = 1000; alpha_s = 1e-3
-distil_params = [burn_in, H,alpha_s]
+H = 10;alpha_s = 1e-2
+#  burn_in = 1000; 
+distil_params = [H,alpha_s]
 f_student = StudentToyDataSimple1()
 SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
 phi_init = torch.tensor([0.0,0.0], requires_grad=True)
