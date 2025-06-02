@@ -8,8 +8,17 @@ class StudentLogger:
         self.log_records = [] # Initialize an empty list to store log dictionaries
         self.columns = [
             "StudentUpdateStep", "SGLDIteration", "Loss",
-            "w0_Bias", "grad_w0", "w1_Weight", "grad_w1"
+            "w0_Bias", "grad_w0", "w1_Weight", 
+            "grad_w1"
         ]
+
+    def add_student_weight(self, student_weight, bias, weight):
+        student_weight[0,0] = bias
+        student_weight[0,1] = weight
+
+        # logger.student_step5[0,0] = f.fc1.bias.detach().clone()
+        #             logger.student_step5[0,1] = f.fc1.weight.detach().clone()
+
 
     def log_step(self, student_update_step, sgld_iteration, loss,
                  w0_bias, grad_w0, w1_weight, grad_w1):
@@ -61,3 +70,10 @@ class StudentLogger:
         self.close()
 
 log_filename = os.path.join(os.getcwd(),"toy_example/distillation_debug_df.csv") 
+
+#Debugging
+student_step5 = torch.empty((1,2))
+student_step50 =  torch.empty((1, 2))
+student_step1000 = torch.empty((1,2))
+student_step2500 = torch.empty((1,2))
+student_step5000 = torch.empty((1,2))    

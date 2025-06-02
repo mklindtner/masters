@@ -42,31 +42,38 @@ target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 g_bayesian_linear_reg = lambda x, w: w[:,0] + w[:,1]*x
 g_meansq = lambda x,w: (w[:,0] + w[:,1]*x)**2
 
-g_list = [g_bayesian_linear_reg, g_meansq]
+#I think g1_func = g_bayesian_linear_reg
+def g1_blinear(x, w): return torch.cat([torch.ones_like(x), x], dim=1) @ w.T
+def g2_bsq(x, w): return g1_blinear(x, w)**2
 
-class StudentToyDataSimple1(nn.Module):
+class StudentToyDataReqLin(nn.Module):
     def __init__(self):
-        super(StudentToyDataSimple1, self).__init__()
+        super(StudentToyDataReqLin, self).__init__()
         self.fc1 = nn.Linear(1, 1)
-        # self.fc2 = nn.Linear(1, 1)
-        # self.fc2 = nn.Linear(10, 5) 
-        # self.fc4 = nn.Linear(5,1)  
 
     def forward(self, x):
-        # x = x.view(-1, 784)
-        # x = x.view(-1,20)  
-        # x = F.relu(self.fc1(x)) 
-        # x = F.relu(self.fc2(x))  
-        # x = F.relu(self.fc3(x))
-        # x = self.fc2(x)
         x = self.fc1(x)
         return x
     
+
+class StudentToyDataRegSq(nn.Module):
+    def __init__(self):
+        super(StudentToyDataRegSq, self).__init__()
+        self.fc1 = nn.Linear(3, 1)
+
+    def forward(self, x):
+        features = torch.cat([x**2, x, torch.ones_like(x)], dim=1)
+        x = self.fc1(features)
+        return x
+    
 MSEloss = nn.MSELoss()
-H = 10;alpha_s = 1e-2
+H = 20;alpha_s = 1e-2
 #  burn_in = 1000; 
 distil_params = [H,alpha_s]
-f_student = StudentToyDataSimple1()
+f_student = StudentToyDataReqLin()
+f_student_sq = StudentToyDataRegSq()
 SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
 phi_init = torch.tensor([0.0,0.0], requires_grad=True)
+
+st_list = [(f_student, g1_blinear, nn.MSELoss()), (f_student_sq,g2_bsq, nn.MSELoss())]
 
