@@ -1,17 +1,35 @@
 import pandas as pd # Import pandas
 import torch # Ensure torch is available for type hints or checks if needed
 import os
+from toydata import T, H
 
 class StudentLogger:
-    def __init__(self, log_filepath="student_training_log.csv"):
+    def __init__(self, log_filepath="student_training_log.csv", review_step=H, T=T):
         self.log_filepath = log_filepath
         self.log_records = [] # Initialize an empty list to store log dictionaries
         self.columns = [
+            "g_id",
             "StudentUpdateStep", "SGLDIteration", "Loss",
             "w0_Bias", "grad_w0", "w1_Weight", 
             "grad_w1"
         ]
 
+        self.reviews = [x for x in range(T) if x == 0 or x % review_step == 0]
+    
+    #For multiple g 
+    def logger_step(self, g_id, sgld_step,st_step, loss, w0, w0_grad, w1, w1_grad): 
+        if st_step not in self.reviews:
+            return None
+        
+        grad_w0_str = f"{w0_grad:.6e}"
+        grad_w1_str = f"{w1_grad:.6e}"
+        loss_str = f"{loss.item():.6e}"
+        foo = [g_id, st_step, sgld_step, float(loss_str), w0, float (grad_w0_str), w1, float(grad_w1_str)]
+        record = dict(zip(self.columns, foo))
+        self.log_records.append(record)
+
+
+    #Should be depcecated
     def add_student_weight(self, student_weight, bias, weight):
         student_weight[0,0] = bias
         student_weight[0,1] = weight
@@ -20,6 +38,7 @@ class StudentLogger:
         #             logger.student_step5[0,1] = f.fc1.weight.detach().clone()
 
 
+    #For single g
     def log_step(self, student_update_step, sgld_iteration, loss,
                  w0_bias, grad_w0, w1_weight, grad_w1):
         """Stores a single step of student training data as a dictionary."""
@@ -58,7 +77,6 @@ class StudentLogger:
 
 
     def close(self):
-        """Saves the collected data to CSV when closing."""
         self.save_to_csv()
         self.log_records = [] # Clear records after saving (optional, good for re-use)
 
@@ -69,7 +87,7 @@ class StudentLogger:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-log_filename = os.path.join(os.getcwd(),"toy_example/distillation_debug_df.csv") 
+log_filename = os.path.join(os.getcwd(),"toy_example/distillation_scalable_debug_df.csv") 
 
 #Debugging
 student_step5 = torch.empty((1,2))

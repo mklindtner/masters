@@ -153,7 +153,7 @@ def distillation_expectation_scalable(
         if t >= burn_in and (t - burn_in) % H == 0:
             current_theta_samples = samples_theta[:t+1]
 
-         
+
             for i, (f, g, loss_fn) in enumerate(st_list):
                 gfoo = g(algo2D.x, current_theta_samples)
                 ghat = torch.mean(gfoo, dim=1)
@@ -171,13 +171,14 @@ def distillation_expectation_scalable(
                 if logger and hasattr(f, 'fc1'):
                     w0_val = f.fc1.bias.item()
                     w1_val = f.fc1.weight[0,0].item()
-                    grad_w0 = f.fc1.bias.grad.item() 
-                    grad_w1 = f.fc1.weight.grad[0,0].item()
+                    w0_grad = f.fc1.bias.grad.item() 
+                    w1_grad = f.fc1.weight.grad[0,0].item()
 
-                    logger.log_step(
-                        f"s{i+1}_tphi_{t_phi + 1}", t, output.item(),
-                        w0_val, grad_w0, w1_val, grad_w1
-                    )
+                    logger.logger_step(i, t, phi_iter_cnt, output, w0_val, w0_grad, w1_val, w1_grad)
+                    # logger.log_step(
+                    #     f"s{i+1}_tphi_{t_phi + 1}", t, output.item(),
+                    #     w0_val, grad_w0, w1_val, grad_w1
+                    # )
                     # if phi_iter_cnt in [5, 50, 100, 500, 1000, 2500, 5000]:
                     #      logger.add_student_weight(f"student{i+1}_step{phi_iter_cnt}", f.fc1.bias.detach().clone(), f.fc1.weight.detach().clone())
 

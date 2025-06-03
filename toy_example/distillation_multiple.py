@@ -32,9 +32,11 @@ preds_student2_sorted = preds_student2_final[sort_indices]
 # plt.subplots(figsize=(10, 6))
 plt.figure(figsize=(12, 7)) # Adjusted figsize slightly
 
+#Fixed
+# plt.plot(xtrain, yhat_anal, color='black', linestyle='--', label=f'Analytical Bayesian Fit: y = {M[0,0]:.2f} + {M[1,0]:.2f}x')
 plt.plot(xtrain_np, ytrain_np, 'k.', label='Data', markersize=12)
-plt.plot(xtrain_sorted, preds_student1_sorted, 'b-', label='Student 1 (Linear g)', linewidth=2)
-plt.plot(xtrain_sorted, preds_student2_sorted, 'g-', label='Student 2 (Quadratic g)', linewidth=2)
+plt.plot(xtrain_sorted, preds_student1_sorted, 'b-', label='Student 1 (g(x,y,w))', linewidth=2)
+plt.plot(xtrain_sorted, preds_student2_sorted, 'g-', label='Student 2 (Quadratic g(x,y,w)^2)', linewidth=2)
 
 plt.xlabel("Input Feature (xtrain)")
 plt.ylabel("Output Value")

@@ -17,7 +17,7 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-T = 10000
+T = 1000
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
