@@ -1,6 +1,6 @@
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
-from toydata import StudentToyDataReqLin
+from toydata import f_SCALAR, f_DIST
 import torch.optim as optim
 from debugging import student_step5, student_step50, student_step1000, student_step2500, student_step5000
 
@@ -13,6 +13,7 @@ def SGLD_step(theta, eta_t, grad):
 
 #Use the entire dataset for |S| and |S'|
 #Use alpha_s = 1 for all s
+#We assume f is scalar type
 def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_params, f,g, loss, T=10000, logger=None):
     D = theta_init.shape[0]
     obs_shape = algo2D.x.T.shape[1]
@@ -53,7 +54,7 @@ def distillation_expectation(algo2D, theta_init, phi_init, sgld_params, distil_p
         eta_sq = max(a/(b+t)**gamma,1e-7)         
 
         if t > burn_in and t % H == 0:
-            gfoo = g(algo2D.x, samples_theta[:t])            
+            gfoo = g(algo2D.x, samples_theta[:t])                        
             ghat = torch.mean(gfoo, dim=1)
 
             #Keep all samples in memory            
@@ -135,11 +136,22 @@ def distillation_expectation_scalable(
     T_phi = int((T - burn_in) / H) if (T > burn_in) else 0
 
     # Generalize initialization for any number of students
-    num_students = len(st_list)
-    optimizers = [optim.Adam(f.parameters(), lr=student_lr) for f, g, loss in st_list]
-    list_of_phi_samples = [torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device) for _ in range(num_students)]
+    # num_students = len(st_list)
+    optimizers = [optim.Adam(f.parameters(), lr=student_lr) for f, _, _, _ in st_list]
+    # list_of_phi_samples = [torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device) for _ in range(num_students)]
+    list_of_phi_samples = []
+    list_of_phi_samples.append({
+        'type': f_SCALAR,
+        'predictions': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device)
+    })
 
-    t_phi = 0
+    list_of_phi_samples.append({
+        'type': f_DIST,
+        'mean': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
+        'log_variance': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device)
+    })
+
+    t_phi = 0   
     phi_iter_cnt = 0
 
     for t in range(T):
@@ -154,18 +166,33 @@ def distillation_expectation_scalable(
             current_theta_samples = samples_theta[:t+1]
 
 
-            for i, (f, g, loss_fn) in enumerate(st_list):
+            for i, (f, g, loss_fn, st_type) in enumerate(st_list):
                 gfoo = g(algo2D.x, current_theta_samples)
-                ghat = torch.mean(gfoo, dim=1)
+
+                if st_type == f_SCALAR:
+                    ghat = torch.mean(gfoo, dim=1)
+                else:
+                    ghat = gfoo
 
                 f.train()
                 optimizers[i].zero_grad()
-                gpred = f(algo2D.x).squeeze(-1)
-                output = loss_fn(ghat.view_as(gpred), gpred)
+                if st_type == f_SCALAR:
+                    gpred = f(algo2D.x).squeeze(-1)
+                    output = loss_fn(ghat.view_as(gpred), gpred)
+                    list_of_phi_samples[0]['predictions'][t_phi] = gpred.detach().clone()
+                elif st_type == f_DIST:
+                    gpred_mean, gpred_log_var = f(algo2D.x)
+                    gpred_var = torch.exp(gpred_log_var)
+                    output = loss_fn(gpred_mean.squeeze(), ghat.squeeze(), gpred_var.squeeze())
+
+                    # output = loss_fn(ghat.squeeze(), gpred_mean.squeeze(), gpred_log_var.squeeze())  #assummes NLL metric
+                    list_of_phi_samples[1]['mean'][t_phi] = gpred_mean.detach().clone().squeeze()
+                    list_of_phi_samples[1]['log_variance'][t_phi] = gpred_log_var.detach().clone().squeeze()
+
+
                 output.backward()
                 optimizers[i].step()
 
-                list_of_phi_samples[i][t_phi] = gpred.detach().clone()
 
                 # Log results for the i-th student
                 if logger and hasattr(f, 'fc1'):
@@ -173,14 +200,7 @@ def distillation_expectation_scalable(
                     w1_val = f.fc1.weight[0,0].item()
                     w0_grad = f.fc1.bias.grad.item() 
                     w1_grad = f.fc1.weight.grad[0,0].item()
-
-                    logger.logger_step(i, t, phi_iter_cnt, output, w0_val, w0_grad, w1_val, w1_grad)
-                    # logger.log_step(
-                    #     f"s{i+1}_tphi_{t_phi + 1}", t, output.item(),
-                    #     w0_val, grad_w0, w1_val, grad_w1
-                    # )
-                    # if phi_iter_cnt in [5, 50, 100, 500, 1000, 2500, 5000]:
-                    #      logger.add_student_weight(f"student{i+1}_step{phi_iter_cnt}", f.fc1.bias.detach().clone(), f.fc1.weight.detach().clone())
+                    logger.logger_step(i, t, phi_iter_cnt, output, w0_val, w0_grad, w1_val, w1_grad)                  
 
             t_phi += 1
             phi_iter_cnt += 1

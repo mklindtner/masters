@@ -17,7 +17,7 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-T = 1000
+T = 100
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
@@ -38,13 +38,33 @@ M = beta*S@Phi_train.T @ algo2D.y
 target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 
 
-
+#Single g regressors
 g_bayesian_linear_reg = lambda x, w: w[:,0] + w[:,1]*x
 g_meansq = lambda x,w: (w[:,0] + w[:,1]*x)**2
 
-#I think g1_func = g_bayesian_linear_reg
+def g_pred_likelihood(x_points, w):
+    #Mean
+    phi_x = torch.cat([torch.ones_like(x_points), x_points], dim=1)
+    likelihood_weights = phi_x @ w.T    # Shape [N_data, num_teacher_samples]    
+    mu = torch.mean(likelihood_weights, dim=1)      # Shape [N_data]
+    var = torch.mean(likelihood_weights**2, dim=1) - mu**2
+    
+    #Var
+    aleatoric_var = 1.0 / beta  # Beta^(-1)   
+    sigma_sq = aleatoric_var + var  # Shape [N_data]
+    sigma_sq = torch.clamp(sigma_sq, min=1e-6)     #approximations implies the variance could be negative so just gonna clamp.
+
+    #Sample
+    epsilon = torch.randn_like(mu) 
+    y_true_samples = mu + torch.sqrt(sigma_sq) * epsilon
+
+    return y_true_samples
+
+
+#New regressors
 def g1_blinear(x, w): return torch.cat([torch.ones_like(x), x], dim=1) @ w.T
 def g2_bsq(x, w): return g1_blinear(x, w)**2
+def g3_ppd(x, w): return g_pred_likelihood(x,w)
 
 class StudentToyDataReqLin(nn.Module):
     def __init__(self):
@@ -66,14 +86,47 @@ class StudentToyDataRegSq(nn.Module):
         x = self.fc1(features)
         return x
     
+
+class StudentToyDataPredictivePosterior(nn.Module):
+    def __init__(self):
+        super(StudentToyDataPredictivePosterior, self).__init__()
+        self.mean = nn.Linear(2,1)
+        self.log_variance = nn.Linear(3,1)
+
+    def forward(self, x):
+        mean_features = torch.cat([x, torch.ones_like(x)], dim=1)
+        mean = self.mean(mean_features)
+        log_variance_features = torch.cat([x**2, x, torch.ones_like(x)], dim=1)
+        log_variance = self.log_variance(log_variance_features)
+        return (mean, log_variance)
+    
+
 MSEloss = nn.MSELoss()
+NLLloss = nn.NLLLoss()
 H = 20;alpha_s = 1e-2
 #  burn_in = 1000; 
 distil_params = [H,alpha_s]
 f_student = StudentToyDataReqLin()
 f_student_sq = StudentToyDataRegSq()
+f_student_pred_post = StudentToyDataPredictivePosterior()
+f_SCALAR = 'scalar'; f_DIST = 'dist'
+
+
 SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
 phi_init = torch.tensor([0.0,0.0], requires_grad=True)
 
-st_list = [(f_student, g1_blinear, nn.MSELoss()), (f_student_sq,g2_bsq, nn.MSELoss())]
+st_list = [(f_student, g1_blinear, nn.MSELoss(), 'scalar'), (f_student_sq,g2_bsq, nn.MSELoss(), 'scalar'), (f_student_pred_post, g3_ppd, nn.GaussianNLLLoss(reduction='mean', eps=1e-6), 'dist')]
+
+
+
+colors_gradient = {
+    'teacher': 'k',             # Black for ground truth
+    'student_final': 'red',   # Green for the final converged model
+    'step_5': '#4682B4',        # Lightest blue
+    'step_50': 'yellow',       # Medium-light blue
+    'step_1000': 'blue',      # Medium-dark blue
+    'step_2500': '#4169E1',       # Darkest blue (approaching final)
+    'step_final': '#3F51B5',
+    'st_sq': 'cornflowerblue'
+}
 
