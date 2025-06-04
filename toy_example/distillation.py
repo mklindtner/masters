@@ -1,8 +1,10 @@
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
+import torch.distributions
 from toydata import f_SCALAR, f_DIST
 import torch.optim as optim
 from debugging import student_step5, student_step50, student_step1000, student_step2500, student_step5000
+from toydata import beta
 
 def SGLD_step(theta, eta_t, grad):
     D = theta.shape[0]
@@ -133,23 +135,29 @@ def distillation_expectation_scalable(
     # Initialize distillation parameters
     H, student_lr = st_params
     burn_in = int(0.10 * T)
-    T_phi = int((T - burn_in) / H) if (T > burn_in) else 0
+    T_phi = (T - burn_in) // H if ((T - burn_in) % H == 0) else (T - burn_in) // H + 1
 
     # Generalize initialization for any number of students
     # num_students = len(st_list)
     optimizers = [optim.Adam(f.parameters(), lr=student_lr) for f, _, _, _ in st_list]
     # list_of_phi_samples = [torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device) for _ in range(num_students)]
     list_of_phi_samples = []
-    list_of_phi_samples.append({
-        'type': f_SCALAR,
-        'predictions': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device)
-    })
 
-    list_of_phi_samples.append({
-        'type': f_DIST,
-        'mean': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
-        'log_variance': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device)
-    })
+    
+    for _, _, _, st_type_from_list in st_list: 
+        if st_type_from_list == f_SCALAR:
+            list_of_phi_samples.append({
+                'type': f_SCALAR,
+                'predictions': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device)
+            })
+        else:
+            list_of_phi_samples.append({
+                'type': f_DIST,
+                'mean': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
+                'log_variance': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
+                'NLL': torch.empty((T_phi), dtype=torch.float32, device=theta.device),
+                'kl_div': torch.empty((T_phi), dtype=torch.float32, device=theta.device)
+            })
 
     t_phi = 0   
     phi_iter_cnt = 0
@@ -178,17 +186,34 @@ def distillation_expectation_scalable(
                 optimizers[i].zero_grad()
                 if st_type == f_SCALAR:
                     gpred = f(algo2D.x).squeeze(-1)
-                    output = loss_fn(ghat.view_as(gpred), gpred)
-                    list_of_phi_samples[0]['predictions'][t_phi] = gpred.detach().clone()
-                elif st_type == f_DIST:
+                    output = loss_fn(gpred, ghat.view_as(gpred))
+                    list_of_phi_samples[i]['predictions'][t_phi] = gpred.detach().clone()
+
+                elif st_type == f_DIST: #PPD : Posterior Predictive Distribution
                     gpred_mean, gpred_log_var = f(algo2D.x)
                     gpred_var = torch.exp(gpred_log_var)
+
+                    #NLLNOrmalGaus
                     output = loss_fn(gpred_mean.squeeze(), ghat.squeeze(), gpred_var.squeeze())
 
                     # output = loss_fn(ghat.squeeze(), gpred_mean.squeeze(), gpred_log_var.squeeze())  #assummes NLL metric
-                    list_of_phi_samples[1]['mean'][t_phi] = gpred_mean.detach().clone().squeeze()
-                    list_of_phi_samples[1]['log_variance'][t_phi] = gpred_log_var.detach().clone().squeeze()
+                    list_of_phi_samples[i]['mean'][t_phi] = gpred_mean.detach().clone().squeeze()
+                    list_of_phi_samples[i]['log_variance'][t_phi] = gpred_log_var.detach().clone().squeeze()
+                    list_of_phi_samples[i]['NLL'][t_phi] = output.item()
 
+
+                    # --- KL(st_pdd || teacher_pdd)---
+                    Phi_train = torch.column_stack((algo2D.x, torch.ones(len(algo2D.x))))
+                    ll_mu = Phi_train @ current_theta_samples.T
+                    teacher_mu = torch.mean(ll_mu,dim=1)
+                    teacher_var = 1/beta + torch.mean(ll_mu**2,dim=1) - teacher_mu**2 
+                    teacher_var = torch.clamp(teacher_var, 1e-6)
+                    teacher_pdd = torch.distributions.Normal(teacher_mu.squeeze(), torch.sqrt(teacher_var).squeeze())
+
+                    st_sqrt = torch.sqrt(gpred_var + 1e-8).squeeze()
+                    st_ppd = torch.distributions.Normal(gpred_mean.squeeze(), st_sqrt)
+                    kl_div_per_point =  torch.distributions.kl.kl_divergence(st_ppd, teacher_pdd)
+                    list_of_phi_samples[i]['kl_div'][t_phi] =  torch.mean(kl_div_per_point).item()
 
                 output.backward()
                 optimizers[i].step()
@@ -206,7 +231,7 @@ def distillation_expectation_scalable(
             phi_iter_cnt += 1
     
     # Set all models to evaluation mode
-    for f, g, loss in st_list:
+    for f, _, loss,_ in st_list:
         f.eval()
 
     return samples_theta, list_of_phi_samples

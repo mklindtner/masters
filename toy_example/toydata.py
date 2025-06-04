@@ -17,7 +17,7 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-T = 100
+T = 10000
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
@@ -28,7 +28,7 @@ algo2D_student_simple = gped2DNormal_student(xtrain, ytrain, alpha=alpha, beta=b
 
 
 #MLE/MAP & distribution
-Phi_train = design_matrix(algo2D.x)
+Phi_train = torch.column_stack((torch.ones(len(algo2D.x)), algo2D.x))
 w_MLE = np.linalg.solve(Phi_train.T@Phi_train, Phi_train.T@algo2D.y).ravel()
 w_MAP = (beta*torch.linalg.solve(alpha*torch.eye(2) + beta*(Phi_train.T@Phi_train), Phi_train.T)@algo2D.y).ravel()
 
@@ -37,6 +37,18 @@ S = torch.inverse(alpha*torch.eye(2) + beta * Phi_train.T @ Phi_train)
 M = beta*S@Phi_train.T @ algo2D.y
 target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 
+#PDD Mean and covariance
+PDD_M = (Phi_train @ M).squeeze()
+PDD_S = (Phi_train @ S @ Phi_train.T) + torch.eye(algo2D.x.shape[0]) * 1/beta
+PDD_S = PDD_S + torch.eye(PDD_S.shape[0]) * 1e-6
+target_PDD = MultivariateNormal(PDD_M, PDD_S)   
+
+# Phi_current_x = design_matrix_torch(algo2D.x)
+# mu_analytical_ppd = (Phi_current_x @ M_analytical).squeeze().to(torch.float32) # Ensure float32 for consistency
+# var_epistemic_analytical = torch.diag(Phi_current_x @ S_analytical @ Phi_current_x.T).to(torch.float32)
+# # Ensure beta_teacher is float32 for division
+# var_analytical_ppd = (1.0/beta_teacher.to(torch.float32)) + var_epistemic_analytical
+# var_analytical_ppd = torch.clamp(var_analytical_ppd, min=1e-6) # Ensure variance is positive
 
 #Single g regressors
 g_bayesian_linear_reg = lambda x, w: w[:,0] + w[:,1]*x
@@ -110,7 +122,6 @@ f_student = StudentToyDataReqLin()
 f_student_sq = StudentToyDataRegSq()
 f_student_pred_post = StudentToyDataPredictivePosterior()
 f_SCALAR = 'scalar'; f_DIST = 'dist'
-
 
 SGLD_params = (2.1*1e-1,1.65, 0.556, 1e-2)
 phi_init = torch.tensor([0.0,0.0], requires_grad=True)
