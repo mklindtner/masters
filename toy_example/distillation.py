@@ -4,7 +4,7 @@ import torch.distributions
 from toydata import f_SCALAR, f_DIST
 import torch.optim as optim
 from debugging import student_step5, student_step50, student_step1000, student_step2500, student_step5000
-from toydata import beta
+from toydata import target_PDD
 
 def SGLD_step(theta, eta_t, grad):
     D = theta.shape[0]
@@ -138,9 +138,7 @@ def distillation_expectation_scalable(
     T_phi = (T - burn_in) // H if ((T - burn_in) % H == 0) else (T - burn_in) // H + 1
 
     # Generalize initialization for any number of students
-    # num_students = len(st_list)
     optimizers = [optim.Adam(f.parameters(), lr=student_lr) for f, _, _, _ in st_list]
-    # list_of_phi_samples = [torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device) for _ in range(num_students)]
     list_of_phi_samples = []
 
     
@@ -148,19 +146,22 @@ def distillation_expectation_scalable(
         if st_type_from_list == f_SCALAR:
             list_of_phi_samples.append({
                 'type': f_SCALAR,
-                'predictions': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device)
+                'predictions': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
+                'st_w0': [None] * T_phi,
+                'st_w': [None] * T_phi,
+                'teacher_W': [None]* T_phi
             })
         else:
             list_of_phi_samples.append({
                 'type': f_DIST,
                 'mean': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
                 'log_variance': torch.empty((T_phi, N_data), dtype=torch.float32, device=theta.device),
-                'NLL': torch.empty((T_phi), dtype=torch.float32, device=theta.device),
-                'kl_div': torch.empty((T_phi), dtype=torch.float32, device=theta.device)
+                'nll_loss': torch.empty((T_phi), dtype=torch.float32, device=theta.device),
+                'kl_div_st_teacher': torch.empty((T_phi), dtype=torch.float32, device=theta.device),
+                'kl_div_teacher_anal': torch.empty((T_phi), dtype=torch.float32, device=theta.device)
             })
 
     t_phi = 0   
-    phi_iter_cnt = 0
 
     for t in range(T):
         theta_detach = theta.detach().clone().requires_grad_(True)
@@ -188,47 +189,51 @@ def distillation_expectation_scalable(
                     gpred = f(algo2D.x).squeeze(-1)
                     output = loss_fn(gpred, ghat.view_as(gpred))
                     list_of_phi_samples[i]['predictions'][t_phi] = gpred.detach().clone()
+                    list_of_phi_samples[i]['st_w0'][t_phi] = f.fc1.bias.detach().clone()
+                    list_of_phi_samples[i]['st_w'][t_phi] = f.fc1.weight.detach().clone()
+                    list_of_phi_samples[i]['teacher_W'][t_phi] = torch.mean(current_theta_samples,axis=0)
 
                 elif st_type == f_DIST: #PPD : Posterior Predictive Distribution
                     gpred_mean, gpred_log_var = f(algo2D.x)
                     gpred_var = torch.exp(gpred_log_var)
 
-                    #NLLNOrmalGaus
+                    #NLLNormalGauss is the loss function
                     output = loss_fn(gpred_mean.squeeze(), ghat.squeeze(), gpred_var.squeeze())
 
-                    # output = loss_fn(ghat.squeeze(), gpred_mean.squeeze(), gpred_log_var.squeeze())  #assummes NLL metric
                     list_of_phi_samples[i]['mean'][t_phi] = gpred_mean.detach().clone().squeeze()
                     list_of_phi_samples[i]['log_variance'][t_phi] = gpred_log_var.detach().clone().squeeze()
-                    list_of_phi_samples[i]['NLL'][t_phi] = output.item()
+                    list_of_phi_samples[i]['nll_loss'][t_phi] = output.item()
 
 
                     # --- KL(st_pdd || teacher_pdd)---
-                    Phi_train = torch.column_stack((algo2D.x, torch.ones(len(algo2D.x))))
-                    ll_mu = Phi_train @ current_theta_samples.T
-                    teacher_mu = torch.mean(ll_mu,dim=1)
-                    teacher_var = 1/beta + torch.mean(ll_mu**2,dim=1) - teacher_mu**2 
+                    Phi_train = torch.cat([torch.ones_like(algo2D.x), algo2D.x], dim=1)
+                    l_mu = Phi_train @ current_theta_samples.T
+                    teacher_mu = torch.mean(l_mu,dim=1)
+                    teacher_var = 1.0/algo2D.beta + torch.mean(l_mu**2,dim=1) - teacher_mu**2 
                     teacher_var = torch.clamp(teacher_var, 1e-6)
                     teacher_pdd = torch.distributions.Normal(teacher_mu.squeeze(), torch.sqrt(teacher_var).squeeze())
 
                     st_sqrt = torch.sqrt(gpred_var + 1e-8).squeeze()
                     st_ppd = torch.distributions.Normal(gpred_mean.squeeze(), st_sqrt)
-                    kl_div_per_point =  torch.distributions.kl.kl_divergence(st_ppd, teacher_pdd)
-                    list_of_phi_samples[i]['kl_div'][t_phi] =  torch.mean(kl_div_per_point).item()
+                    kl_div_points_st_teacher =  torch.distributions.kl.kl_divergence(st_ppd, teacher_pdd)
+                    list_of_phi_samples[i]['kl_div_st_teacher'][t_phi] =  torch.mean(kl_div_points_st_teacher).item()
+
+                    kl_div_points_teacher_anal = torch.distributions.kl.kl_divergence(teacher_pdd, target_PDD)
+                    list_of_phi_samples[i]['kl_div_teacher_anal'][t_phi] = torch.mean(kl_div_points_teacher_anal).item()
 
                 output.backward()
                 optimizers[i].step()
 
 
-                # Log results for the i-th student
+                # Log results for the i-th student, not updated for kl / NLL
                 if logger and hasattr(f, 'fc1'):
                     w0_val = f.fc1.bias.item()
                     w1_val = f.fc1.weight[0,0].item()
                     w0_grad = f.fc1.bias.grad.item() 
                     w1_grad = f.fc1.weight.grad[0,0].item()
-                    logger.logger_step(i, t, phi_iter_cnt, output, w0_val, w0_grad, w1_val, w1_grad)                  
+                    logger.logger_step(i, t, t_phi, output, w0_val, w0_grad, w1_val, w1_grad)                  
 
             t_phi += 1
-            phi_iter_cnt += 1
     
     # Set all models to evaluation mode
     for f, _, loss,_ in st_list:

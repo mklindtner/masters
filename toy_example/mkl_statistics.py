@@ -2,7 +2,18 @@ import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.kl import kl_divergence
 import matplotlib.pyplot as plt
+import torch
 
+def metric_mahalanobis_sq(mu_target, muhat, S_inv):  
+    num_steps = muhat.shape[0]
+    distances_sq = torch.empty(num_steps, dtype=mu_target.dtype, device=mu_target.device)
+
+    for k in range(num_steps):
+        # current_mu_estimate = muhat[k]
+        diff = mu_target[k] - muhat[k] # Shape [D_theta]
+        dist_sq = diff @ S_inv @ diff
+        distances_sq[k] = dist_sq.item() 
+    return distances_sq
 
 
 def weight_kl(W_samples, target):

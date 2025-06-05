@@ -1,9 +1,9 @@
-from toydata import theta_init, algo2D, SGLD_params, distil_params, T, st_list, xtrain, ytrain, colors_gradient, H
-
+from toydata import theta_init, algo2D, SGLD_params, distil_params, T, st_list, xtrain, ytrain, colors_gradient, H, M,S
 from debugging import StudentLogger, log_filename
 from distillation import distillation_expectation_scalable
 import matplotlib.pyplot as plt
 import numpy as np
+from mkl_statistics import weight_kl, metric_mahalanobis_sq
 import torch
 
 
@@ -19,8 +19,10 @@ with StudentLogger(log_filepath=log_filename) as student_logger:
         )
     
 weight_teacher_final = teacher_samples[-1, :].cpu().numpy()
-preds_student1_final = student_samples[0]['predictions'][-1, :].cpu().numpy()
-preds_student2_final = student_samples[1]['predictions'][-1, :].cpu().numpy()
+preds_student1_final = student_samples[0]['predictions'][-1, :].cpu().numpy() #g1 predictions
+preds_student2_final = student_samples[1]['predictions'][-1, :].cpu().numpy() #g2 predictions
+
+
 
 xtrain_np = xtrain.squeeze().cpu().numpy()
 ytrain_np = ytrain.squeeze().cpu().numpy()
@@ -40,9 +42,15 @@ epistemic_stdev_g = np.sqrt(epistemic_var_g)
 upper_bound_g = preds_st_linear_sorted + 2 * epistemic_stdev_g
 lower_bound_g = preds_st_linear_sorted - 2 * epistemic_stdev_g
 
-# plt.figure(figsize=(12, 7)) 
 
-# plot for mean, epistemic uncertainity and standard deviation of mean
+#Student Steps 
+burn_in = int(0.10 * T)
+st_total_steps = (T - burn_in) // H if ((T - burn_in) % H == 0) else (T - burn_in) // H + 1
+st_steps = np.arange(st_total_steps)
+
+
+# # plot for mean, epistemic uncertainity and standard deviation of mean
+# plt.figure(figsize=(12, 7)) 
 # plt.plot(xtrain_sorted,  ytrain_sorted, 'k.', label='Data', markersize=12)
 # plt.plot(xtrain_sorted, preds_teacher_sorted, linestyle='--', color='black', label=f'Teacher Bayesian Linear Fit:')
 # plt.plot(xtrain_sorted, preds_st_linear_sorted, linestyle='-', color=colors_gradient["step_final"], label='Student 1 (g(x,y,w))', linewidth=2)
@@ -56,8 +64,6 @@ lower_bound_g = preds_st_linear_sorted - 2 * epistemic_stdev_g
 
 # plt.plot(xtrain_sorted, upper_bound_g, color='blue', linestyle='-', linewidth=1.5)
 # plt.plot(xtrain_sorted, lower_bound_g, color='blue', linestyle='-', linewidth=1.5)
-
-
 # plt.xlabel("Input Feature (xtrain)")
 # plt.ylabel("Output Value")
 # plt.title(f"Student Network Predictions vs. Training Data: {T}-iterations")
@@ -66,33 +72,66 @@ lower_bound_g = preds_st_linear_sorted - 2 * epistemic_stdev_g
 # plt.show()
 
 
+#Plot squared Mahalanobis distance
 
-ppd_st_mean = student_samples[2]['mean'][-1, :].cpu().numpy()
-ppd_st_log_var = student_samples[2]['log_variance'][-1,:].cpu().numpy()
-ppd_st_nll = student_samples[2]['NLL'].cpu().numpy()
-ppd_st_kl = student_samples[2]['kl_div'].cpu().numpy()
+#For linear weights and teacher vs student
+st_W_lin = []
+for bias, w in zip(student_samples[0]['st_w0'], student_samples[0]['st_w']):
+    st_W_lin.append(torch.tensor([bias.item(),w.item()]))
 
-burn_in = int(0.10 * T)
-st_total_steps = (T - burn_in) // H if ((T - burn_in) % H == 0) else (T - burn_in) // H + 1
-st_steps = np.arange(st_total_steps)
-# --- Plot NLL Loss ---
-plt.figure(figsize=(10, 6))
-plt.plot(st_steps, ppd_st_nll, marker='.', linestyle='-', color='purple')
-plt.title(f"NLL Loss for Distributional Student {st_total_steps}-steps")
-plt.xlabel("Distillation Step Index (t_phi)")
-plt.ylabel("Negative Log-Likelihood (NLL)")
+
+st_W_lin = torch.stack(st_W_lin)
+teacher_M = torch.stack(student_samples[0]['teacher_W'])
+teacher_S = torch.cov(teacher_M.T) + torch.eye(teacher_M.T.shape[0])*1e-8
+mahal_teacher_st = metric_mahalanobis_sq(teacher_M,st_W_lin, teacher_S)
+
+
+#For analytical vs teacher
+MM = M.T.repeat(teacher_M.shape[0], 1)
+mahal_anal_teacher = metric_mahalanobis_sq(MM, teacher_M, S)
+
+
+plt.plot(st_steps, mahal_anal_teacher, label="analytical/teacher", color="green")
+plt.plot(st_steps, mahal_teacher_st, label="teacher/student", color="red")
+plt.title(f"Mahalanobis Sq Distance for Posterior mean\n {st_total_steps}-steps")
+plt.xlabel("student iterations")
+plt.ylabel("Mahalnobis Sq Distance")
+plt.legend()
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.tight_layout()
 plt.show()
 
+# print("ok")
 
-# --- Plot KL Divergence ---
-plt.figure(figsize=(10, 6))
-plt.plot(st_steps, ppd_st_kl, marker='.', linestyle='-', color='green')
-plt.title(f"KL Divergence (Student PDD || Teacher Est. PDD) for {st_total_steps}-steps")
-plt.xlabel("Distillation Step Index (t_phi)")
-plt.ylabel("KL Divergence")
-plt.grid(True, linestyle='--', alpha=0.7)
-plt.tight_layout()
-plt.show()
+
+# # --- Plot NLL Loss ---
+# ppd_st_nll = student_samples[2]['nll_loss'].cpu().numpy()
+
+
+# plt.figure(figsize=(10, 6))
+# plt.plot(st_steps, ppd_st_nll, linestyle='-', color=colors_gradient["st_sq"], linewidth=1)
+# plt.title(f"NLL Loss between Teacher and Student Distribution\n {st_total_steps}-steps")
+# plt.xlabel("Distillation Step Index (t_phi)")
+# plt.ylabel("Negative Log-Likelihood (NLL)")
+# plt.ylim(0,3)
+# plt.legend()
+# plt.grid(True, linestyle='--', alpha=0.7)
+# plt.tight_layout()
+# plt.show()
+
+
+# # --- Plot KL Divergence ---
+# ppd_st_teacher_kl = student_samples[2]['kl_div_st_teacher'].cpu().numpy()
+# ppd_teacher_anal_kl = student_samples[2]['kl_div_teacher_anal'].cpu().numpy()
+
+# plt.figure(figsize=(10, 6))
+# plt.plot(st_steps, ppd_st_teacher_kl, marker='.', linestyle='-', color='green', label="KL-Divergence for Teacher and Student",  linewidth=2)
+# plt.plot(st_steps, ppd_teacher_anal_kl, linestyle='--', color='black', label="(Baseline) KL-Divergence for Teacher and analytical PPD ", linewidth=1.5)
+# plt.title(f"KL( Student P|| Teacher PPD) and KL(Teacher_PPD || analytical_PPD) for {st_total_steps}-steps")
+# plt.xlabel("Distillation Step Index (t_phi)")
+# plt.ylabel("KL Divergence")
+# plt.legend()
+# plt.grid(True, linestyle='--', alpha=0.7)
+# plt.tight_layout()
+# plt.show()
 

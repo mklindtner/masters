@@ -17,7 +17,7 @@ ytrain = torch.tensor([-0.464, 2.024, 3.191, 2.812, 6.512, -3.022, 1.99, 0.009, 
 
 N = 20
 sz = 2
-T = 10000
+T = 100
 prior_mean = torch.tensor([0,0])
 theta_init = torch.tensor([0.0,0.0], requires_grad=True)
 
@@ -41,7 +41,11 @@ target = MultivariateNormal(loc=M.T.squeeze(), covariance_matrix=S)
 PDD_M = (Phi_train @ M).squeeze()
 PDD_S = (Phi_train @ S @ Phi_train.T) + torch.eye(algo2D.x.shape[0]) * 1/beta
 PDD_S = PDD_S + torch.eye(PDD_S.shape[0]) * 1e-6
-target_PDD = MultivariateNormal(PDD_M, PDD_S)   
+
+#For quicker calculations we're going to ignore the covariance between samples
+PDD_sigma_sq = torch.clamp(torch.diag(PDD_S), min=1e-8)
+PDD_sigma = torch.sqrt(PDD_sigma_sq)
+target_PDD = torch.distributions.Normal(PDD_M, PDD_sigma)   
 
 # Phi_current_x = design_matrix_torch(algo2D.x)
 # mu_analytical_ppd = (Phi_current_x @ M_analytical).squeeze().to(torch.float32) # Ensure float32 for consistency
