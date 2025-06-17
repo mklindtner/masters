@@ -105,33 +105,33 @@ plt.show()
 
 
 # # --- Plot NLL Loss ---
-# ppd_st_nll = student_samples[2]['nll_loss'].cpu().numpy()
+ppd_st_nll = student_samples[2]['nll_loss'].cpu().numpy()
 
 
-# plt.figure(figsize=(10, 6))
-# plt.plot(st_steps, ppd_st_nll, linestyle='-', color=colors_gradient["st_sq"], linewidth=1)
-# plt.title(f"NLL Loss between Teacher and Student Distribution\n {st_total_steps}-steps")
-# plt.xlabel("Distillation Step Index (t_phi)")
-# plt.ylabel("Negative Log-Likelihood (NLL)")
-# plt.ylim(0,3)
-# plt.legend()
-# plt.grid(True, linestyle='--', alpha=0.7)
-# plt.tight_layout()
-# plt.show()
+plt.figure(figsize=(10, 6))
+plt.plot(st_steps, ppd_st_nll, linestyle='-', color=colors_gradient["st_sq"], linewidth=1)
+plt.title(f"NLL Loss between Teacher and Student Distribution\n {st_total_steps}-steps")
+plt.xlabel("Distillation Step Index (t_phi)")
+plt.ylabel("Negative Log-Likelihood (NLL)")
+plt.ylim(0,3)
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.show()
 
 
-# # --- Plot KL Divergence ---
-# ppd_st_teacher_kl = student_samples[2]['kl_div_st_teacher'].cpu().numpy()
-# ppd_teacher_anal_kl = student_samples[2]['kl_div_teacher_anal'].cpu().numpy()
+# --- Plot KL Divergence ---
+ppd_st_teacher_kl = student_samples[2]['kl_div_st_teacher'].cpu().numpy()
+ppd_teacher_anal_kl = student_samples[2]['kl_div_teacher_anal'].cpu().numpy()
 
-# plt.figure(figsize=(10, 6))
-# plt.plot(st_steps, ppd_st_teacher_kl, marker='.', linestyle='-', color='green', label="KL-Divergence for Teacher and Student",  linewidth=2)
-# plt.plot(st_steps, ppd_teacher_anal_kl, linestyle='--', color='black', label="(Baseline) KL-Divergence for Teacher and analytical PPD ", linewidth=1.5)
-# plt.title(f"KL( Student P|| Teacher PPD) and KL(Teacher_PPD || analytical_PPD) for {st_total_steps}-steps")
-# plt.xlabel("Distillation Step Index (t_phi)")
-# plt.ylabel("KL Divergence")
-# plt.legend()
-# plt.grid(True, linestyle='--', alpha=0.7)
-# plt.tight_layout()
-# plt.show()
+plt.figure(figsize=(10, 6))
+plt.plot(st_steps, ppd_st_teacher_kl, marker='.', linestyle='-', color='green', label="KL-Divergence for Teacher and Student",  linewidth=2)
+plt.plot(st_steps, ppd_teacher_anal_kl, linestyle='--', color='black', label="(Baseline) KL-Divergence for Teacher and analytical PPD ", linewidth=1.5)
+plt.title(f"KL( Student P|| Teacher PPD) and KL(Teacher_PPD || analytical_PPD) for {st_total_steps}-steps")
+plt.xlabel("Distillation Step Index (t_phi)")
+plt.ylabel("KL Divergence")
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.show()
 

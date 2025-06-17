@@ -1,0 +1,2 @@
+data-url: https://archive.ics.uci.edu/dataset/45/heart+disease
+pip: pip install ucimlrepo
