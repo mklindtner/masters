@@ -16,7 +16,7 @@
 #BSUB -gpu "num=1:mode=exclusive_process"
 
 ### -- set walltime limit: hh:mm --
-#BSUB -W 23:00
+#BSUB -W 4:00
 
 ### -- request RAM in GB. A100 nodes have lots of RAM, so we can ask for a good amount. --
 #BSUB -R "rusage[mem=16GB]"
@@ -31,27 +31,3 @@
 ### -- Specify the output and error file. %J is the job-id --
 #BSUB -o experiment/hpc_output/gpu_%J.out
 #BSUB -e experiment/hpc_err/gpu_%J.err
-
-# ---------------------------------------------------------------------
-# Environment Setup and Execution
-# ---------------------------------------------------------------------
-module load cuda/12.2
-module load python3/3.11.9
-
-source /zhome/25/e/155273/masters/hpc_venv/bin/activate
-
-# --- Sanity checks for easy debugging ---
-echo "--- JOB DIAGNOSTICS ---"
-echo "Job running on host: $HOSTNAME"
-echo "GPU status:"
-nvidia-smi
-echo "-----------------------"
-echo "Python version: $(python --version)"
-echo "Python executable: $(which python)"
-echo "PYTHONPATH is set to: $PYTHONPATH"
-echo "-----------------------"
-
-# --- Main command ---
-echo "Starting Python script..."
-python -m experiment.experiment1_training
-echo "Script execution finished."

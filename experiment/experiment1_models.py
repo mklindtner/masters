@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 from torch.nn.utils import parameters_to_vector
 import itertools
 import torch.nn.functional as F
+import os
 
 
 
@@ -226,4 +227,10 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
             })        
     
     print("--- Finished Distillation Process ---")
+
+    results.append({
+        'st_w': st_network.state_dict(),
+        'tr_w': tr_network.state_dict()
+    })
+
     return results

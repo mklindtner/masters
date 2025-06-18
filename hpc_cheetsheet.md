@@ -9,15 +9,22 @@ voltash, sxm2sh (pref), a100sh
 - CUDA_VISIBLE_DEVICES=1,3
 
 
+
 # Debugger
 - use debugpy
 
 # see version
 - module available
 
+# Bjobs
+- bstat
+- bsub < batchjob.sh
+- nodestat -F hpc
 
 
-# Python Setup debugger
+
+
+# Python Setup debugger (NOTE! Does not work on GPU Nodes because of their security, they do not allow forward-ports)
 - ctrl+shift+p: Ports: Focus on Ports View
 - add port 5678
 - in .vscode/launch.json write:

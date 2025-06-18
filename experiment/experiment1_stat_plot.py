@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import numpy as np
-from constants import path_exp_fig, path_exp_stat
+from constants import path_exp_fig, path_exp_stat, path_exp_weights
+import torch
 
 def save_results_to_csv(results_data, results_dir=path_exp_stat):
     if not results_data:
@@ -30,7 +31,7 @@ def save_results_to_csv(results_data, results_dir=path_exp_stat):
     return results_df
 
 
-def plot_results(results_data, figs_dir=path_exp_fig):
+def plot_results(results_data, T, figs_dir=path_exp_fig):
     if not results_data:
         print("No data available to plot.")
         return
@@ -44,7 +45,7 @@ def plot_results(results_data, figs_dir=path_exp_fig):
     plt.plot(t_steps, teacher_nll, marker='o', linestyle='-', label='Teacher NLL')
     plt.plot(t_steps, student_nll, marker='x', linestyle='--', label='Student NLL')
 
-    plt.title(f'Teacher/Student NLL: {len(t_steps)}-steps')
+    plt.title(f'Teacher/Student NLL: \n ({T} iterations)')
     plt.xlabel('Student Training Steps (t)')
     plt.ylabel('Average Negative Log-Likelihood (NLL)')
     plt.grid(True)
@@ -56,3 +57,16 @@ def plot_results(results_data, figs_dir=path_exp_fig):
     
     plt.savefig(full_path)
     print(f"Plot saved to {full_path}")
+
+
+def store_weights(results_data, weights_dir=path_exp_weights):
+    st_w = results_data['st_w']
+    tr_w = results_data['tr_w']
+    student_weights_path = os.path.join(weights_dir, "final_student_weights.pth")
+    teacher_weights_path = os.path.join(weights_dir, "final_teacher_weights.pth")
+    
+    print(f"Saving final student weights to: {student_weights_path}")
+    torch.save(st_w, student_weights_path)
+    
+    print(f"Saving final teacher weights to: {teacher_weights_path}")
+    torch.save(tr_w, teacher_weights_path)

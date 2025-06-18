@@ -1,5 +1,9 @@
+#Experiments
 path_exp_fig = "experiment/figs"
 path_exp_stat = "experiment/statistics" 
+path_exp_weights = "experiment/weights"
+
+#Telemonitoring
 path_parkin_data_csv = "parkinsons_telemonitoring/data/parkinsons_data.csv"
 path_parkin_stat = "parkinsons_telemonitoring/statistics"
 path_parkin_fig = "parkinsons_telemonitoring/figs"

@@ -12,7 +12,7 @@ T_test = 10000
 #                                            device=device, verbose=True
 #                                            ) 
 results = distillation_posterior_MNIST(tr_items=tr_items, st_items=st_items, msc_list=msc_items, T_total=T_test)
-plot_results(results)
+plot_results(results, T=T_test)
 save_results_to_csv(results)
 
 
