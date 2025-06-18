@@ -23,3 +23,8 @@ __pycache__/
 *.pyd
 .DS_Store
 hpc_venv/
+experiment/hpc_output/*
+experiment/hpc_err/*
+experiment/weights/*
+
+!*/.gitkeep
