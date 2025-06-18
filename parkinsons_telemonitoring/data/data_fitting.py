@@ -4,9 +4,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import TensorDataset, DataLoader
 import joblib
+from constants import path_parkin_data_csv, TENSOR_DATA_FILE, SCALER_X_FILE, SCALER_Y_FILE
 
 
-df = pd.read_csv('data/parkinsons_data.csv')
+df = pd.read_csv(path_parkin_data_csv)
 y = df[['total_UPDRS']]
 X_full = df.drop(columns=['total_UPDRS', 'motor_UPDRS'])
 X = X_full.drop(columns=['HNR'])
@@ -30,9 +31,7 @@ y_train_tensor = torch.FloatTensor(y_train_scaled)
 X_test_tensor = torch.FloatTensor(X_test_scaled)
 y_test_tensor = torch.FloatTensor(y_test_scaled)
 
-TENSOR_DATA_FILE = 'data/fitted_tensors.pt'
-SCALER_X_FILE = 'data/scaler_X.joblib'
-SCALER_Y_FILE = 'data/scaler_y.joblib'
+
 
 # --- 1. Save all tensors in a single dictionary file ---
 torch.save({

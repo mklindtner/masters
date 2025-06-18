@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import numpy as np
+from constants import path_parkin_stat, path_parkin_fig
 
 
-def save_results_to_csv(results_data, results_dir="statistics"):
+def save_results_to_csv(results_data, results_dir=path_parkin_stat):
     if not results_data:
         print("No results to save.")
         return None
@@ -28,7 +29,7 @@ def save_results_to_csv(results_data, results_dir="statistics"):
     return results_df
 
 
-def plot_results(results_data, figs_dir="figs"):
+def plot_results(results_data, figs_dir=path_parkin_fig):
     if not results_data:
         print("No data available to plot.")
         return
@@ -66,7 +67,7 @@ def plot_results(results_data, figs_dir="figs"):
 
 
 
-def plot_tr_results_teacher(results_data, figs_dir="figs", label="teacher_nll_plot"):
+def plot_tr_results_teacher(results_data, figs_dir=path_parkin_fig, label="teacher_nll_plot"):
     train_steps = range(len(results_data))
     gauss_nll_train = [r['tr_gauss_nll_loss_train'] for r in results_data]
     
@@ -100,7 +101,7 @@ def plot_tr_results_teacher(results_data, figs_dir="figs", label="teacher_nll_pl
     print(f"Plot saved to {full_path}")
 
 
-def plot_tr_results_distillation(results_data, figs_dir="figs", label="nll_kl_plots"):
+def plot_tr_results_distillation(results_data, figs_dir=path_parkin_fig, label="nll_kl_plots"):
     teacher_nlls = [r['tr_nll'] for r in results_data]
     kl_divergences = [r['tr_st_kl'] for r in results_data]
     t = np.arange(len(teacher_nlls))

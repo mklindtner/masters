@@ -1,10 +1,8 @@
 from torch.utils.data import TensorDataset, DataLoader
 import torch
 import joblib
+from constants import SCALER_X_FILE, SCALER_Y_FILE, TENSOR_DATA_FILE
 
-TENSOR_DATA_FILE = 'data/fitted_tensors.pt'
-SCALER_X_FILE = 'data/scaler_X.joblib'
-SCALER_Y_FILE = 'data/scaler_y.joblib'
 
 def parkinsons_dataloaders(batch_size=64):    
     data = torch.load(TENSOR_DATA_FILE)

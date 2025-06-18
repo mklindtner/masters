@@ -11,7 +11,10 @@ voltash, sxm2sh (pref), a100sh
 
 # Debugger
 - use debugpy
-- 
+
+# see version
+- module available
+
 
 # Potential problems
 - When activate the virtual environemnet using alias "mml" vscode crashes when running import torch
@@ -20,3 +23,4 @@ voltash, sxm2sh (pref), a100sh
     - works using "python mnist/hyperparams" at ~/Desktop/masters
     - when going to use gpu it fails at debugging
     - not failing at debugging when on the home node
+
