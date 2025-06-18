@@ -8,7 +8,7 @@ import numpy as np
 from constants import path_exp_fig, path_exp_stat, path_exp_weights
 import torch
 
-def save_results_to_csv(results_data, results_dir=path_exp_stat):
+def save_results_to_csv(results_data, timestamp, T, results_dir=path_exp_stat):
     if not results_data:
         print("No results to save.")
         return None
@@ -17,8 +17,7 @@ def save_results_to_csv(results_data, results_dir=path_exp_stat):
     
     results_df = pd.DataFrame(results_data)
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_filename = f"distillation_results_{timestamp}.csv"
+    csv_filename = f"distillation_results_{timestamp}_T={T}.csv"
     os.makedirs(results_dir, exist_ok=True)
     full_path = os.path.join(results_dir, csv_filename)
     
@@ -31,7 +30,7 @@ def save_results_to_csv(results_data, results_dir=path_exp_stat):
     return results_df
 
 
-def plot_results(results_data, T, figs_dir=path_exp_fig):
+def plot_results(results_data, T, timestamp, figs_dir=path_exp_fig):
     if not results_data:
         print("No data available to plot.")
         return
@@ -51,20 +50,17 @@ def plot_results(results_data, T, figs_dir=path_exp_fig):
     plt.grid(True)
     plt.legend()
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    plot_filename = f'distillation_nll_plot_{timestamp}.png'
+    plot_filename = f'distillation_nll_plot_{timestamp}_T={T}.png'
     full_path = os.path.join(figs_dir, plot_filename)
     
     plt.savefig(full_path)
     print(f"Plot saved to {full_path}")
 
 
-def store_weights(results_data, weights_dir=path_exp_weights):
-    st_w = results_data['st_w']
-    tr_w = results_data['tr_w']
-    student_weights_path = os.path.join(weights_dir, "final_student_weights.pth")
-    teacher_weights_path = os.path.join(weights_dir, "final_teacher_weights.pth")
-    
+def store_weights(st_w, tr_w, timestamp, T, weights_dir=path_exp_weights):
+    student_weights_path = os.path.join(weights_dir, f"final_student_weights_{timestamp}_T={T}.pth")
+    teacher_weights_path = os.path.join(weights_dir, f"final_teacher_weights_{timestamp}_T={T}.pth")
+
     print(f"Saving final student weights to: {student_weights_path}")
     torch.save(st_w, student_weights_path)
     

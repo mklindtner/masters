@@ -49,8 +49,9 @@ else:
 INPUT_FEATURES = 784  
 OUTPUT_FEATURES = 10
 
-st_model = FFC_Regression(input_size=INPUT_FEATURES, output_size=OUTPUT_FEATURES).to(device)
-tr_model = FFC_Regression(input_size=INPUT_FEATURES, output_size=OUTPUT_FEATURES).to(device)
+st_droput = 0.5
+st_model = FFC_Regression(input_size=INPUT_FEATURES, output_size=OUTPUT_FEATURES,dropout_rate=st_droput).to(device)
+tr_model = FFC_Regression(input_size=INPUT_FEATURES, output_size=OUTPUT_FEATURES, dropout_rate=0).to(device)
 
 
 #Msc Parameters
@@ -60,7 +61,7 @@ B = 1000
 H = 100
 
 #teacher parameters 
-tr_lr = 4*1e-6
+tr_lr = 4e-6
 tau = 10
 N = 60000 
 M = BATCH_SIZE
@@ -70,7 +71,7 @@ tr_optim = SGLD(tr_model.parameters(), lr=tr_lr, weight_decay=l2_regularization,
 
 #Student parameters
 st_lr_init = 1e-3
-st_droput = 0.5
+
 st_optim = optim.Adam(st_model.parameters(), lr=st_lr_init)
 st_scheduler = optim.lr_scheduler.StepLR(st_optim, step_size=200, gamma=0.5)
 tr_st_criterion = nn.KLDivLoss(reduction='batchmean', log_target=True)

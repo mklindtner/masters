@@ -223,4 +223,4 @@ def distillation_posterior_parkinsons(tr_items, st_items, msc_list, T_steps, ver
        
 
     print("--- Finished Posterior distillation ---")
-    return results
+    return results, tr_network.state_dict, st_network.state_dict()

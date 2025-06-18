@@ -17,14 +17,17 @@ parkinsons_telemonitoring/data/scalar_X.joblib
 parkinsons_telemonitoring/data/scalar_y.joblib
 parkinsons_telemonitoring/figs/*
 parkinsons_telemonitoring/statistics/*
+parkinsons_telemonitoring/weights/*
+
+experiment/hpc_output/*
+experiment/hpc_err/*
+experiment/weights/*
+
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .DS_Store
 hpc_venv/
-experiment/hpc_output/*
-experiment/hpc_err/*
-experiment/weights/*
 
 !*/.gitkeep

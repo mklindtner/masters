@@ -21,12 +21,13 @@ else:
     print("No GPU available. Using CPU.")
 
 INPUT_FEATURES = 18
-st_model = FFC_Regression_Parkinsons(input_size=INPUT_FEATURES).to(device)
-tr_model = FFC_Regression_Parkinsons(input_size=INPUT_FEATURES).to(device)
+st_droput = 0.5
+st_model = FFC_Regression_Parkinsons(input_size=INPUT_FEATURES, dropout_rate=st_droput).to(device)
+tr_model = FFC_Regression_Parkinsons(input_size=INPUT_FEATURES, dropout_rate=0).to(device)
 
 
 #Msc hyper parameters
-T = int(1e6)
+T = int(1e5)
 B = 2000
 H = 100
 
@@ -44,7 +45,7 @@ tr_eval = int(len(trainloader))
 
 #Student hyper parameters
 st_lr_init = 1e-3
-st_droput = 0.5
+
 st_optim = optim.Adam(st_model.parameters(), lr=st_lr_init)
 st_scheduler = optim.lr_scheduler.StepLR(st_optim, step_size=200, gamma=0.5)
 tr_st_criterion = nn.KLDivLoss(reduction="batchmean")
