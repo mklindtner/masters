@@ -6,9 +6,10 @@ from torch.utils.data import TensorDataset, DataLoader
 import joblib
 
 
-df = pd.read_csv('parkinsons_data.csv')
+df = pd.read_csv('data/parkinsons_data.csv')
 y = df[['total_UPDRS']]
-X = df.drop(columns=['total_UPDRS', 'motor_UPDRS'])
+X_full = df.drop(columns=['total_UPDRS', 'motor_UPDRS'])
+X = X_full.drop(columns=['HNR'])
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 scaler_X = StandardScaler()
