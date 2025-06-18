@@ -1,5 +1,5 @@
-from data.parkinsons_dataloaders import parkinsons_dataloaders 
-from parkinsons_model import SGLD, FFC_Regression_Parkinsons, U_s
+from parkinsons_telemonitoring.data.parkinsons_dataloaders import parkinsons_dataloaders 
+from parkinsons_telemonitoring.parkinsons_model import SGLD, FFC_Regression_Parkinsons, U_s
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -20,7 +20,7 @@ else:
     device = torch.device("cpu")
     print("No GPU available. Using CPU.")
 
-INPUT_FEATURES = 19
+INPUT_FEATURES = 18
 st_model = FFC_Regression_Parkinsons(input_size=INPUT_FEATURES).to(device)
 tr_model = FFC_Regression_Parkinsons(input_size=INPUT_FEATURES).to(device)
 

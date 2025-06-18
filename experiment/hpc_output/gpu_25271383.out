@@ -1,0 +1,29 @@
+--- JOB DIAGNOSTICS ---
+Job running on host: n-62-12-23
+GPU status:
+Wed Jun 18 15:15:13 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 575.57.08              Driver Version: 575.57.08      CUDA Version: 12.9     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-PCIE-40GB          On  |   00000000:37:00.0 Off |                    0 |
+| N/A   27C    P0             29W /  250W |       0MiB /  40960MiB |      0%   E. Process |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+-----------------------
+Python version: Python 3.11.9
+Python executable: /zhome/25/e/155273/masters/hpc_venv/bin/python
+PYTHONPATH is set to: /zhome/25/e/155273/masters
+-----------------------
+Starting Python script...

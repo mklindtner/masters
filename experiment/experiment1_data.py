@@ -3,9 +3,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
-from experiment1_models import SGLD
+from experiment.experiment1_models import SGLD
 import torch
-from experiment1_models import FFC_Regression, U_s
+from experiment.experiment1_models import FFC_Regression, U_s
 
 
 # Internet says 
