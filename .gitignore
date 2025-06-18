@@ -18,6 +18,9 @@ parkinsons_telemonitoring/data/scalar_y.joblib
 parkinsons_telemonitoring/figs/*
 parkinsons_telemonitoring/statistics/*
 parkinsons_telemonitoring/weights/*
+parkinsons_telemonitoring/SGLD_ablation/*
+!parkinsons_telemonitoring/SGLD_ablation/.gitkeep
+
 
 experiment/hpc_output/*
 experiment/hpc_err/*
