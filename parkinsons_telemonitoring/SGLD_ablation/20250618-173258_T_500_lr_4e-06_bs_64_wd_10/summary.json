@@ -1,0 +1,10 @@
+{
+    "T-B": 300,
+    "batch_size": 64,
+    "tr_lr": 4e-06,
+    "weight_decay": 10,
+    "burn_in_B": 200,
+    "avg_nll_post_burn_in": 0.3550314608026058,
+    "timestamp": "20250618-173258",
+    "output_dir": "/zhome/25/e/155273/masters/parkinsons_telemonitoring/SGLD_ablation/20250618-173258_T_500_lr_4e-06_bs_64_wd_10"
+}

@@ -107,12 +107,7 @@ def U_s(teacher_model, inputs):
         targets = teacher_model(inputs)
     return targets
 
-def train_teacher_network(tr_optim, tr_network, T_steps, tr_loader_train, tr_loader_valid, criterion, device, tr_eval, verbose=True):
-    
-    # num_params = len(parameters_to_vector(tr_network.parameters()))
-    
-    # samples_w = torch.empty((T_steps, num_params), device='cpu')
-    
+def train_teacher_network(tr_optim, tr_network, T_steps, tr_loader_train, tr_loader_valid, criterion, device, tr_eval, verbose=True):        
     train_iterator = itertools.cycle(tr_loader_train)
 
     T = tqdm(range(T_steps), desc="SGLD Sampling", disable=not verbose)
@@ -153,7 +148,7 @@ def train_teacher_network(tr_optim, tr_network, T_steps, tr_loader_train, tr_loa
             })
 
     print("--- Finished Teacher Training ---")
-    return results
+    return results, tr_network.state_dict()
 
 
 def distillation_posterior_parkinsons(tr_items, st_items, msc_list, T_steps, verbose=True):
@@ -223,4 +218,4 @@ def distillation_posterior_parkinsons(tr_items, st_items, msc_list, T_steps, ver
        
 
     print("--- Finished Posterior distillation ---")
-    return results, tr_network.state_dict, st_network.state_dict()
+    return results, tr_network.state_dict(), st_network.state_dict()

@@ -97,7 +97,7 @@ def plot_tr_results_teacher(results_data, timestamp, T, figs_dir=path_parkin_fig
     print(f"Plot saved to {full_path}")
 
 
-def plot_tr_results_distillation(results_data, timestamp, T, figs_dir=path_parkin_fig, label="parkin_tele_"):
+def plot_tr_results_distillation(results_data, timestamp, T, figs_dir=path_parkin_fig, label="parkin_tele"):
     teacher_nlls = [r['tr_nll'] for r in results_data]
     kl_divergences = [r['tr_st_kl'] for r in results_data]
     t = np.arange(len(teacher_nlls))
@@ -123,7 +123,7 @@ def plot_tr_results_distillation(results_data, timestamp, T, figs_dir=path_parki
     fig2, ax2 = plt.subplots(figsize=(12, 7))
 
     ax2.plot(t, kl_divergences, label="KL Divergence (Teacher || Student)\n ({T} iterations)", color='green', marker='.', linestyle='-')
-    ax2.set_title(f'Parkinsons telemonitoring\n Posterior Distillation Expectation\n ({T} iterations)', fontsize=14)
+    ax2.set_title(f'(Parkinsons) Posterior Distillation Expectation\n ({T} iterations)', fontsize=14)
     ax2.set_ylabel('KL Divergence', fontsize=12)
     ax2.set_xlabel(f'Student Distillation Step\n ({len(t)})', fontsize=12) 
     ax2.legend(loc='best')
