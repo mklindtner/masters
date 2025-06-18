@@ -5,7 +5,7 @@ mnist/*
 tmp/__pycache__/*
 tmp/__pycache__/
 images/*
-__pycache--/
+__pycache__/
 experiment/figs/*
 experiment/statistics
 experiment/weights
@@ -22,3 +22,4 @@ __pycache__/
 *.pyo
 *.pyd
 .DS_Store
+hpc_venv/
