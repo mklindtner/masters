@@ -17,3 +17,8 @@ parkinsons_telemonitoring/data/scalar_X.joblib
 parkinsons_telemonitoring/data/scalar_y.joblib
 parkinsons_telemonitoring/figs/*
 parkinsons_telemonitoring/statistics/*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
