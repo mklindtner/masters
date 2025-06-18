@@ -40,7 +40,7 @@ class SGLD(optim.Optimizer):
                 prior_grad = -weight_decay * p.data
 
                 #This is funky AF:
-                    #mean_gradient = p.data.grad = (N/M) * sum_of_gradients
+                    #mean_gradient = p.data.grad = (1/M) * sum_of_gradients
                         #This means it is the mean of the batches gradient                    
                     #(N/M) * sum_of_gradients = (N/M) * (M * mean_gradient) = N * mean_gradient                
                 ll_grad =  -N * p.grad
@@ -51,10 +51,11 @@ class SGLD(optim.Optimizer):
                 noise = torch.randn_like(p.data) * math.sqrt(lr)
 
                 w_update = gradient_step + noise
+                
                 #correct update
                 p.data.add_(w_update)
 
-                #"cheating" update
+                #update to debug gradient
                 # p.data.add_(gradient_step)
                 
 
@@ -161,7 +162,6 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
     B, H, criterion, device = msc_list       
     V = 500; s = 0
 
-    #Setup iterator so I dont get a stupid out of elements err
     train_iterator = itertools.cycle(tr_loader_train)
     
     results = []
@@ -199,7 +199,8 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
 
             with torch.no_grad():
                 teacher_logits = U(tr_network, distill_inputs)
-                
+
+            #I ahve no idea 
             student_logits = st_network(distill_inputs)
             soft_targets = F.log_softmax(teacher_logits, dim=-1)
             soft_predictions = F.log_softmax(student_logits, dim=-1)
@@ -222,12 +223,7 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
                 't': t + 1,
                 'tr_nll': teacher_nll,
                 'st_nll': student_nll
-            })
-
-            # T.set_postfix(Distill_Loss=f"distill_loss: {distill_loss.item():.4f}", Student_NLL=f"st_nll: {student_nll:.4f}", loss=f"tr_nll: {teacher_nll:.4f}")
-        # elif t < B:
-        #     T.set_postfix(Status="Teacher Burn-in")
-
+            })        
     
     print("--- Finished Distillation Process ---")
     return results

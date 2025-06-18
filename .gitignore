@@ -5,3 +5,15 @@ mnist/*
 tmp/__pycache__/*
 tmp/__pycache__/
 images/*
+__pycache--/
+experiment/figs/*
+experiment/statistics
+experiment/weights
+parkinsons_telemonitoring/__pycache__
+parkinsons_telemonitoring/data/__pycache__
+parkinsons_telemonitoring/data/fitted_tensors.pt
+parkinsons_telemonitoring/data/parkinsons_data.csv
+parkinsons_telemonitoring/data/scalar_X.joblib
+parkinsons_telemonitoring/data/scalar_y.joblib
+parkinsons_telemonitoring/figs/*
+parkinsons_telemonitoring/statistics/*

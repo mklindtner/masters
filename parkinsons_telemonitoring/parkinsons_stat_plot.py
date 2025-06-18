@@ -101,38 +101,45 @@ def plot_tr_results_teacher(results_data, figs_dir="figs", label="teacher_nll_pl
 
 
 def plot_tr_results_distillation(results_data, figs_dir="figs", label="nll_kl_plots"):
-    steps = [r['t'] for r in results_data]
     teacher_nlls = [r['tr_nll'] for r in results_data]
     kl_divergences = [r['tr_st_kl'] for r in results_data]
+    t = np.arange(len(teacher_nlls))
+    t_total = len(t)
 
-    fig, axs = plt.subplots(2, 1, figsize=(14, 12), sharex=True)
     plt.style.use('seaborn-v0_8-whitegrid')
-    fig.suptitle('Distillation Process Metrics', fontsize=18)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    ax1 = axs[0]
-    ax1.plot(steps, teacher_nlls, label="Teacher Validation NLL", color='blue', marker='o', linestyle='-')
-    ax1.set_title('Teacher Performance (Stability)', fontsize=14)
+    fig1, ax1 = plt.subplots(figsize=(12, 7))
+
+    ax1.plot(t, teacher_nlls, label="Teacher Validation NLL", color='blue', marker='o', linestyle='-')
+    ax1.set_title(f'Parkinsons Telmonitoring\n Teacher Performance NLL: {t_total}-steps', fontsize=16)
     ax1.set_ylabel('Average Gaussian NLL', fontsize=12)
-    ax1.set_xlabel('Training Step')
-    ax1.legend(loc='upper right')
+    ax1.set_xlabel('Student Distillation Step', fontsize=12)
+    ax1.legend(loc='best')
     ax1.grid(True, linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    plot_filename_nll = f'{label}_NLL_{timestamp}.png'
+    full_path_nll = os.path.join(figs_dir, plot_filename_nll)
+    fig1.savefig(full_path_nll, dpi=150)
+    print(f"Teacher NLL plot saved to {full_path_nll}")
 
-    ax2 = axs[1]
-    ax2.plot(steps, kl_divergences, label="KL Divergence (Teacher || Student)", color='green', marker='.', linestyle='-')
-    ax2.set_title('Student Learning Progress (Distillation)', fontsize=14)
+
+    fig2, ax2 = plt.subplots(figsize=(12, 7))
+
+    ax2.plot(t, kl_divergences, label="KL Divergence (Teacher || Student)", color='green', marker='.', linestyle='-')
+    ax2.set_title(f'Parkinsons telemonitoring\n Posterior Distillation Expectation: {t_total}-steps', fontsize=14)
     ax2.set_ylabel('KL Divergence', fontsize=12)
-    ax2.set_xlabel('Training Step', fontsize=12) 
-    ax2.legend(loc='upper right')
-    ax2.set_ylim((0,20))
+    ax2.set_xlabel('Studen Distillaiton Step', fontsize=12) 
+    ax2.legend(loc='best')
+    # ax2.set_ylim((0,20))
     ax2.grid(True, linestyle='--', alpha=0.7)
 
-    plt.tight_layout(rect=[0, 0.03, 1, 0.96])
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    plot_filename = f'{label}_{timestamp}.png'
-    full_path = os.path.join(figs_dir, plot_filename)
-    
-    fig.savefig(full_path, dpi=150)
-    print(f"Plot saved to {full_path}")
+    plt.tight_layout()
+    plot_filename_kl = f'{label}_KL_{timestamp}.png'
+    full_path_kl = os.path.join(figs_dir, plot_filename_kl)
+    fig2.savefig(full_path_kl, dpi=150)
+    print(f"Student KL plot saved to {full_path_kl}")
     
     plt.show()
