@@ -5,7 +5,7 @@ from parkinsons_telemonitoring.parkinsons_data import tr_list, st_list, msc_list
 from parkinsons_telemonitoring.parkinsons_stat_plot import plot_tr_results_distillation, save_results_to_csv, store_weights
 from datetime import datetime
 
-T_test = 1050
+T_test = 3050
 # results  = train_teacher_network(tr_optim=tr_optim, tr_network=tr_model, T_steps=T_test, 
 #                                                     tr_loader_train=trainloader, tr_loader_valid=testloader, criterion=tr_criterion,
 #                                                     device=device, tr_eval=tr_eval, verbose=True
