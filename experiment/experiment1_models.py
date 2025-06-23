@@ -283,7 +283,7 @@ class BayesianRegression():
     
     def log_joint_gradient(self, x,y):        
         #prior: analytical grad
-        w_grad_prior_list = [-self.tau* w.data for w in self.f.parameters()]
+        w_grad_prior_list = [-self.tau* w.data.view(-1) for w in self.f.parameters()]
         w_grad_prior = torch.cat([w.view(-1) for w in w_grad_prior_list])
 
         #likelihood: autodiff grad

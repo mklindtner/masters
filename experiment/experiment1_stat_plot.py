@@ -5,35 +5,94 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import numpy as np
-from constants import path_exp_fig, path_exp_stat, path_exp_weights, path_exp_fig_sens
+from constants import path_exp_fig, path_exp_stat, path_exp_weights, path_exp_fig_sens_figs, path_exp_fig_sens_stat
 import torch
 
 
-def save_results_to_csv_bayers(results_data, timestamp, hp, results_dir=path_exp_fig_sens, distill_type="MNIST_bayesian"):
-   
+def save_results_to_csv_bayers(results_data, hp, timestamp, results_dir=path_exp_fig_sens_stat, title="MNIST_bayesian"):
     if not results_data:
         print("No results to save.")
         return None
 
     print("\n--- Saving Results to CSV ---")
     
-    results_df = pd.DataFrame(results_data)
-    
-    #dark magic the internet told me about
+    results_df = pd.DataFrame(results_data)    
     results_df = results_df.assign(**hp)
     
-    # Create a descriptive filename based on the timestamp and trial type
-    csv_filename = f"{distill_type}_{timestamp}.csv"
+
+    csv_filename = (
+        f"MNIST_{timestamp}_"
+        f"T={hp['iterations']}_"
+        f"M={hp['batch_size']}_"
+        f"tau={hp['tau']}_"
+        f"a={hp['tr_poly_a']:.1e}_"
+        f"b={hp['tr_poly_b']}_"
+        f"g={hp['tr_poly_gamma']}.csv"
+    )
+
     os.makedirs(results_dir, exist_ok=True)
     full_path = os.path.join(results_dir, csv_filename)
-    
     results_df.to_csv(full_path, index=False)
+
     print(f"Results saved to {full_path}")
     
     print("\nResults Preview (with hyperparameters):")
     print(results_df.head())
     
     return results_df
+
+
+
+def plot_results_bayers(results_data, timestamp, hp, title="MNIST_bayesian", figs_dir=path_exp_fig_sens_figs):   
+    if not results_data:
+        print("No data available to plot.")
+        return
+
+    print("\n--- Plotting Results ---")
+
+    df = pd.DataFrame(results_data)
+
+    # Use the 't' column for the x-axis to show actual iterations
+    t_steps = df['t']
+    teacher_nll_val = df['tr_nll']
+    teacher_nll_train = df['tr_nll_train']
+    window_size = 10
+    teacher_nll_train_smooth = teacher_nll_train.rolling(window=window_size).mean()
+    
+    title_str = (
+        f"Teacher/Student NLL: ({hp['iterations']} iterations)\n"
+        f"(Poly Decay: a={hp['tr_poly_a']:.2e}, b={hp['tr_poly_b']:.0f}, γ={hp['tr_poly_gamma']}) | "
+        f"(Data: M={hp['batch_size']}, τ={hp['tau']})"
+    )
+
+    plt.figure(figsize=(12, 7))
+    plt.plot(t_steps, teacher_nll_val, marker='o', linestyle='-', label='Teacher NLL Validation')
+    plt.plot(t_steps, teacher_nll_train, marker='o', color="pink", linestyle='None', alpha=0.3, label='Teacher NLL Train (Raw)')
+    plt.plot(t_steps, teacher_nll_train_smooth, color="red", linestyle='-', label=f'Teacher NLL Train (Smoothed, w={window_size})')
+    
+    plt.title(title_str)
+    plt.xlabel('Training Iterations (t)') # Corrected label
+    plt.ylabel('Average Negative Log-Likelihood (NLL)')
+    plt.grid(True)
+    plt.legend()
+
+    plot_filename = (
+        f"MNIST_{timestamp}_"
+        f"T={hp['iterations']}_"
+        f"M={hp['batch_size']}_"
+        f"tau={hp['tau']}_"
+        f"a={hp['tr_poly_a']:.1e}_"
+        f"b={hp['tr_poly_b']}_"
+        f"g={hp['tr_poly_gamma']}.png"
+    )
+    os.makedirs(figs_dir, exist_ok=True)
+    full_path = os.path.join(figs_dir, plot_filename)
+    
+    plt.savefig(full_path)
+    print(f"Plot saved to {full_path}")
+
+
+
 
 def save_results_to_csv(results_data, timestamp, T, results_dir=path_exp_stat, distill_type="MNIST_nll"):
     if not results_data:
@@ -57,50 +116,6 @@ def save_results_to_csv(results_data, timestamp, T, results_dir=path_exp_stat, d
     return results_df
 
 
-
-
-def plot_results_bayers(results_data, timestamp, hp, distil_type="MNIST_bayesian", figs_dir=path_exp_fig):   
-    if not results_data:
-        print("No data available to plot.")
-        return
-
-    print("\n--- Plotting Results ---")
-
-    teacher_nll_val = [record.get('tr_nll') for record in results_data]
-    teacher_nll_train = [record.get('tr_nll_train') for record in results_data]
-    t_steps = np.arange(len(teacher_nll_val))
-    
-    title_str = (
-        f"Teacher/Student NLL: ({hp['iterations']} iterations)\n"
-        f"(Poly Decay: a={hp['tr_poly_a']:.2e}, b={hp['tr_poly_b']:.0f}, γ={hp['tr_poly_gamma']}) | "
-        f"(Data: M={hp['batch_size']}, τ={hp['tau']})"
-    )
-
-    plt.figure(figsize=(12, 7))
-    plt.plot(t_steps, teacher_nll_val, marker='o', linestyle='-', label='Teacher NLL Validation')
-    plt.plot(t_steps, teacher_nll_train, marker='o', color="pink", linestyle='-', label='Teacher NLL Train')
-    
-    plt.title(title_str)
-    plt.xlabel('Logged Steps (t)')
-    plt.ylabel('Average Negative Log-Likelihood (NLL)')
-    plt.grid(True)
-    plt.legend()
-
-    plot_filename = (
-        f"{distil_type}_{timestamp}_"
-        f"T={hp['iterations']}_"
-        f"M={hp['batch_size']}_"
-        f"tau={hp['tau']}_"
-        f"a={hp['tr_poly_a']:.1e}_"
-        f"b={hp['tr_poly_b']}_"
-        f"g={hp['tr_poly_gamma']}.png"
-    )
-    
-    os.makedirs(figs_dir, exist_ok=True)
-    full_path = os.path.join(figs_dir, plot_filename)
-
-    plt.savefig(full_path)
-    print(f"Plot saved to {full_path}")
 
 #Make this plot back to posterior
 def plot_results_posterior(results_data, timestamp, hp, distil_type="MNIST_",figs_dir=path_exp_fig):
@@ -126,7 +141,7 @@ def plot_results_posterior(results_data, timestamp, hp, distil_type="MNIST_",fig
     plt.grid(True)
     plt.legend()
 
-
+    
     
     plot_filename = f'{distil_type}_{timestamp}_T={T}.png'
     full_path = os.path.join(figs_dir, plot_filename)

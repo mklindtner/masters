@@ -7,6 +7,7 @@
 #BSUB -W 8:00  # Walltime per trial (Increased for 1M iterations)
 #BSUB -n 4
 #BSUB -R "rusage[mem=16GB]"
+#BSUB -R "span[hosts=1]"
 
 # --- Job Array ---
 # This submits all 16 trials for our study.
@@ -47,9 +48,9 @@ case $LSB_JOBINDEX in
     # --- GROUP 1: Varying Prior Precision (tau) ---
     2)  TAU_PARAM=5.0 ;;
     3)  TAU_PARAM=10.0 ;;
-    4)  TAU_PARAM=20.0 ;;
-    5)  TAU_PARAM=30.0 ;;
-    6)  TAU_PARAM=50.0 ;;
+    4)  TAU_PARAM=15.0 ;;
+    5)  TAU_PARAM=20.0 ;;
+    6)  TAU_PARAM=30.0 ;;
     
     # --- GROUP 2: Varying LR Initial Value (via poly_a) ---
     7)  POLY_A_PARAM=1.00e-5 ;; # Lower initial LR

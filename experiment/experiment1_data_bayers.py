@@ -31,7 +31,7 @@ def MNIST_dataloaders(bsz):
     return trainloader, testloader
 
 #cat1 hyp par
-DEFAULT_T = int(1e5)
+DEFAULT_T = int(6e3)
 DEFAULT_H = 100
 DEFAULT_B = 1000
 DEFAULT_TAU = 15
@@ -45,9 +45,9 @@ DEFAULT_TR_POLY_LR_B = 17.0
 
 
 def setup_experiment(batch_size, tau, N):
-    print("--- Setting up experiment with the following parameters: ---")
-    print(f"  Data size (N): {N}, Batch Size (M): {batch_size}, Prior Precision (tau): {tau}")
-    print("---------------------------------------------------------")
+#     print("--- Setting up experiment with the following parameters: ---")
+#     print(f"  Data size (N): {N}, Batch Size (M): {batch_size}, Prior Precision (tau): {tau}")
+#     print("---------------------------------------------------------")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     trainloader, testloader = MNIST_dataloaders(batch_size)

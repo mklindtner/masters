@@ -10,7 +10,11 @@ experiment/figs/*
 experiment/statistics
 experiment/weights
 experiment/debugging_sgld/*
+experiment/sensitivity/*
 !experiment/debugging_sgld/.gitkeep
+!experiment/sensitivity/.gitkeep
+
+
 parkinsons_telemonitoring/__pycache__
 parkinsons_telemonitoring/data/__pycache__
 parkinsons_telemonitoring/data/fitted_tensors.pt

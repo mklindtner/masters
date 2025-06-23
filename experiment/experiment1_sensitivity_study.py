@@ -36,11 +36,11 @@ def main(args):
     )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    plot_title = f"MNIST_bayesian_{timestamp}"
     hp_dict = vars(args)
+
     
-    plot_results_bayers(results, timestamp=timestamp, hp=hp_dict, distil_type=plot_title)
-    save_results_to_csv_bayers(results, timestamp=timestamp, hp=hp_dict, distill_type=plot_title)
+    plot_results_bayers(results, timestamp=timestamp ,hp=hp_dict)
+    save_results_to_csv_bayers(results, timestamp=timestamp, hp=hp_dict)
     # store_weights(tr_w, "teacher_weights", timestamp=timestamp) # Optional: save weights
 
 
