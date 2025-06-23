@@ -24,39 +24,39 @@ class SGLD(optim.Optimizer):
 
     @torch.no_grad()
     def step(self):
-        for group in self.param_groups:
-            lr = group['lr']
-            weight_decay = group['weight_decay']
-            N = group['N']
+        group = self.param_groups[0]
+        lr = group['lr']
+        weight_decay = group['weight_decay']
+        N = group['N']
+        
+        for p in group['params']:
+            if p.grad is None:
+                continue
             
-            for p in group['params']:
-                if p.grad is None:
-                    continue
-                
-                #l2 regularization = prior w. N(0,1/tau)
-                #grad L2 = tau*theta
-                prior_grad = -weight_decay * p.data
+            #l2 regularization = prior w. N(0,1/tau)
+            #grad L2 = tau*theta
+            prior_grad = -weight_decay * p.data
 
-                #This is funky AF:
-                    #mean_gradient = p.data.grad = (1/M) * sum_of_gradients
-                        #This means it is the mean of the batches gradient                    
-                    #(N/M) * sum_of_gradients = (N/M) * (M * mean_gradient) = N * mean_gradient                
-                ll_grad =  -N * p.grad
-                
-                gradient_step = 0.5 * lr * (prior_grad + ll_grad)
+            #This is funky AF:
+                #mean_gradient = p.data.grad = (1/M) * sum_of_gradients
+                    #This means it is the mean of the batches gradient                    
+                #(N/M) * sum_of_gradients = (N/M) * (M * mean_gradient) = N * mean_gradient                
+            ll_grad =  -N * p.grad
+            
+            gradient_step = 0.5 * lr * (prior_grad + ll_grad)
 
-                #White noise
-                # noise = torch.randn_like(p.data) * math.sqrt(lr)
-
-                # w_update = gradient_step + noise
-                
-                #correct update
-                # p.data.add_(w_update)
-
-                #update to debug gradient
-                p.data.add_(gradient_step)
+            #White noise
             noise = torch.randn_like(p.data) * math.sqrt(lr)
-            p.data.add_(noise)
+
+            w_update = gradient_step + noise
+            
+            #correct update
+            p.data.add_(w_update)
+
+            #update to debug gradient
+            # p.data.add_(gradient_step)
+        # noise = torch.randn_like(p.data) * math.sqrt(lr)
+        # p.data.add_(noise)
                 
 
 
@@ -163,25 +163,25 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
 
         if t >= B and (t % H == 0):   
             T.set_postfix(Status="Distilling")
-            st_network.train() 
+            # st_network.train() 
             tr_network.eval()  
-            distill_inputs, _ = next(train_iterator)
-            distill_inputs = distill_inputs.to(device).view(distill_inputs.size(0), -1)
+            # distill_inputs, _ = next(train_iterator)
+            # distill_inputs = distill_inputs.to(device).view(distill_inputs.size(0), -1)
 
 
-            with torch.no_grad():
-                teacher_logits = U(tr_network, distill_inputs)
+            # with torch.no_grad():
+            #     teacher_logits = U(tr_network, distill_inputs)
 
             
-            student_logits = st_network(distill_inputs)
-            soft_targets = F.log_softmax(teacher_logits, dim=-1)
-            soft_predictions = F.log_softmax(student_logits, dim=-1)
-            st_loss = tr_st_criterion(soft_predictions, soft_targets)
+            # student_logits = st_network(distill_inputs)
+            # soft_targets = F.log_softmax(teacher_logits, dim=-1)
+            # soft_predictions = F.log_softmax(student_logits, dim=-1)
+            # st_loss = tr_st_criterion(soft_predictions, soft_targets)
 
 
-            st_optim.zero_grad()
-            st_loss.backward()
-            st_optim.step()
+            # st_optim.zero_grad()
+            # st_loss.backward()
+            # st_optim.step()
             s+= 1
 
             # if s % 200 == 0:
@@ -189,13 +189,13 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
             #     print(f"\nStep {t+1}: Student LR decayed.")
 
             
-            student_nll = validate_network(st_network, tr_loader_valid, criterion, device, verbose=False)
+            # student_nll = validate_network(st_network, tr_loader_valid, criterion, device, verbose=False)
             teacher_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=False)
             results.append({
                 't': t + 1,
                 'tr_nll': teacher_nll,
                 'tr_nll_train': tr_nll_train,
-                'st_nll': student_nll,
+                # 'st_nll': student_nll,
             })        
     
     print("--- Finished Distillation Process ---")

@@ -53,13 +53,13 @@ def plot_results(results_data, T, timestamp, figs_dir=path_exp_fig):
     print("\n--- Plotting Results ---")
 
     teacher_nll = [record.get('tr_nll') for record in results_data]
-    student_nll = [record.get('st_nll') for record in results_data]
+    # student_nll = [record.get('st_nll') for record in results_data]
     teacher_nll_train = [record.get('tr_nll_train') for record in results_data]
     t_steps = np.arange(len(teacher_nll))
     plt.figure(figsize=(12, 7))
 
     plt.plot(t_steps, teacher_nll, marker='o', linestyle='-', label='Teacher NLL')
-    plt.plot(t_steps, student_nll, marker='x', linestyle='--', label='Student NLL')
+    # plt.plot(t_steps, student_nll, marker='x', linestyle='--', label='Student NLL')
     plt.plot(t_steps,teacher_nll_train, marker='o', color="pink", linestyle='-', label='Teacher NLL Train')
 
     plt.title(f'Teacher/Student NLL: \n ({T} iterations)')

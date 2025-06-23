@@ -6,7 +6,16 @@ import torch.optim as optim
 from experiment.experiment1_models import SGLD
 import torch
 from experiment.experiment1_models import FFC_Regression, U_s
+import numpy as np
+import random
 
+#For reproducabilæity I'll just set the seed everywhere
+seed = 42
+torch.manual_seed(seed)
+np.random.seed(seed)
+random.seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(seed)
 
 # Internet says 
 # mean = 0.1307, std = 0.3081.

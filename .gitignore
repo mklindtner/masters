@@ -9,6 +9,8 @@ __pycache__/
 experiment/figs/*
 experiment/statistics
 experiment/weights
+experiment/debugging_sgld/*
+!experiment/debugging_sgld/.gitkeep
 parkinsons_telemonitoring/__pycache__
 parkinsons_telemonitoring/data/__pycache__
 parkinsons_telemonitoring/data/fitted_tensors.pt

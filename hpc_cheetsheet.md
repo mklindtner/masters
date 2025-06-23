@@ -22,7 +22,12 @@ voltash, sxm2sh (pref), a100sh
 - nodestat -F hpc
 
 
+# SCP
 
+- scp -i ~/.ssh/gbar file1.txt s205421@transfer.gbar.dtu.dk:
+    - from homedir to hpc
+- scp -i ~/.ssh/gbar s205421@transfer.gbar.dtu.dk: .
+    - hpc to homedir
 
 # Python Setup debugger (NOTE! Does not work on GPU Nodes because of their security, they do not allow forward-ports)
 - ctrl+shift+p: Ports: Focus on Ports View
@@ -50,8 +55,8 @@ voltash, sxm2sh (pref), a100sh
     ]
 }
 - in vscode terminal do 
-    - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client parkinsons_telemonitoring/parkinsons_training
-    - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client experiment/experiment1_training
+    - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m parkinsons_telemonitoring/parkinsons_training
+    - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m experiment.experiment1_training
 - in "run and debug" click Green arrow
 
 # Potential problems

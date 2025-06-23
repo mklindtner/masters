@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from experiment.experiment1_stat_plot import save_results_to_csv, plot_results, store_weights
 
-T_test = 30000
+T_test = 50000
 
 results, st_w, tr_w = distillation_posterior_MNIST(tr_items=tr_items, st_items=st_items, msc_list=msc_items, T_total=T_test)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
