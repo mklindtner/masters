@@ -56,6 +56,7 @@ class SGLD(optim.Optimizer):
                 
 
 
+#For stort netværk?
 class FFC_Regression_Parkinsons(nn.Module):#
 
     def __init__(self, input_size, dropout_rate=0.5):
@@ -74,8 +75,11 @@ class FFC_Regression_Parkinsons(nn.Module):#
         x = self.dropout(x)
         
         mean = self.fc3_mean(x)
-        mean = torch.clamp(mean, min=-30, max=30)
-        log_var = 5.0 * torch.tanh(self.fc3_log_var(x))
+
+        #brug softplus til log var
+        log_var = self.fc3_log_var(x)
+        # mean = torch.clamp(mean, min=-30, max=30)
+        # log_var = 5.0 * torch.tanh(self.fc3_log_var(x))
         return mean, log_var
 
 

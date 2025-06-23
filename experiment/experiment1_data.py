@@ -14,7 +14,7 @@ transform = transforms.Compose([
     transforms.ToTensor(), 
     transforms.Normalize((0.1307,), (0.3081,))
 ])
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 
 trainset = torchvision.datasets.MNIST(root='./data',
                                       train=True,
@@ -64,16 +64,20 @@ H = 100
 tr_lr = 4e-6
 tau = 10
 N = 60000 
-M = BATCH_SIZE
-l2_regularization = tau / N
+M = BATCH_SIZE 
+#I think the 1/2 cancels here because the gra
+# l2_regularization = 1/2 * tau 
+l2_regularization = tau
 tr_optim = SGLD(tr_model.parameters(), lr=tr_lr, weight_decay=l2_regularization, N=N)
 
 
 #Student parameters
 st_lr_init = 1e-3
 
+
 st_optim = optim.Adam(st_model.parameters(), lr=st_lr_init)
-st_scheduler = optim.lr_scheduler.StepLR(st_optim, step_size=200, gamma=0.5)
+step_128_bz = 93600 #1 epoch = 60k/128 = 468; 468*200 = half learning = 93600
+st_scheduler = optim.lr_scheduler.StepLR(st_optim, step_size=step_128_bz, gamma=0.5)
 tr_st_criterion = nn.KLDivLoss(reduction='batchmean', log_target=True)
 
 #Setup relevant lists

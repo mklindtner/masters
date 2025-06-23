@@ -13,9 +13,6 @@ import os
 
 
 class SGLD(optim.Optimizer):
-    """
-    SGLD Optimizer for teacher / From the masters we know L2 regularization (weight decay) is equivalent to the prior.
-    """
     def __init__(self, params, lr=1e-3, weight_decay=0, N=1):
         if lr < 0.0:
             raise ValueError(f"Invalid learning rate: {lr}")
@@ -49,15 +46,17 @@ class SGLD(optim.Optimizer):
                 gradient_step = 0.5 * lr * (prior_grad + ll_grad)
 
                 #White noise
-                noise = torch.randn_like(p.data) * math.sqrt(lr)
+                # noise = torch.randn_like(p.data) * math.sqrt(lr)
 
-                w_update = gradient_step + noise
+                # w_update = gradient_step + noise
                 
                 #correct update
-                p.data.add_(w_update)
+                # p.data.add_(w_update)
 
                 #update to debug gradient
-                # p.data.add_(gradient_step)
+                p.data.add_(gradient_step)
+            noise = torch.randn_like(p.data) * math.sqrt(lr)
+            p.data.add_(noise)
                 
 
 
@@ -107,45 +106,6 @@ def validate_network(model, validation_loader, criterion, device, verbose=True):
     return total_loss / total_samples
 
 
-def train_teacher_network(tr_optim, tr_network, T_epochs, tr_loader_train, tr_loader_valid, criterion, device, verbose=True):
-    num_params = len(parameters_to_vector(tr_network.parameters()))
-    # print(f"Teacher network has {num_params} parameters.")
-    
-    samples_theta = torch.empty((T_epochs, num_params), device='cpu')
-    tr_nll = []
-
-    # Create a tqdm progress bar for the epochs loop if verbose is True
-    T = tqdm(range(T_epochs), desc="Total Progress", disable=not verbose)
-
-    print(f"--- Starting Teacher Training for {T_epochs} epochs ---")
-    for t in T:
-        tr_network.train()
-        
-        batch_loop = tqdm(tr_loader_train, desc=f"Epoch {t+1}/{T_epochs}", leave=False, disable=not verbose)
-        
-        for inputs, labels in batch_loop:
-            inputs, labels = inputs.to(device), labels.to(device)
-            inputs = inputs.view(inputs.size(0), -1)
-
-            tr_optim.zero_grad()
-            outputs = tr_network(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            tr_optim.step()
-
-        # Validate and save teacher parameters        
-        validation_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=verbose)
-        tr_nll.append(validation_nll)
-        
-        current_params = parameters_to_vector(tr_network.parameters()).clone().detach().cpu()
-        samples_theta[t] = current_params
-        
-        if verbose:
-            T.set_postfix(Validation_NLL=f"{validation_nll:.4f}")
-
-    print("--- Finished Teacher Training ---")
-    return samples_theta, tr_nll
-
 
 # Equation (9) from "posterior distillation"
 def U_s(teacher_model, inputs):
@@ -154,6 +114,10 @@ def U_s(teacher_model, inputs):
         targets = teacher_model(inputs)
     return targets
 
+# def U_circ(tr_model, inputs):
+#     tr_model.eval()
+#     with torch.no_grad():
+#         targets = 
 
 
 
@@ -187,8 +151,15 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
         tr_optim.zero_grad()
         outputs = tr_network(inputs)
         loss = criterion(outputs, labels)
+
+        #log train
+        if t >= B and (t % H == 0):
+            tr_nll_train = loss.item()
+
+
         loss.backward()
         tr_optim.step()
+        
 
         if t >= B and (t % H == 0):   
             T.set_postfix(Status="Distilling")
@@ -201,7 +172,7 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
             with torch.no_grad():
                 teacher_logits = U(tr_network, distill_inputs)
 
-            #I ahve no idea 
+            
             student_logits = st_network(distill_inputs)
             soft_targets = F.log_softmax(teacher_logits, dim=-1)
             soft_predictions = F.log_softmax(student_logits, dim=-1)
@@ -213,9 +184,9 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
             st_optim.step()
             s+= 1
 
-            if s % 200 == 0:
-                st_scheduler.step()
-                print(f"\nStep {t+1}: Student LR decayed.")
+            # if s % 200 == 0:
+            #     st_scheduler.step()
+            #     print(f"\nStep {t+1}: Student LR decayed.")
 
             
             student_nll = validate_network(st_network, tr_loader_valid, criterion, device, verbose=False)
@@ -223,9 +194,62 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
             results.append({
                 't': t + 1,
                 'tr_nll': teacher_nll,
-                'st_nll': student_nll
+                'tr_nll_train': tr_nll_train,
+                'st_nll': student_nll,
             })        
     
     print("--- Finished Distillation Process ---")
 
     return results, st_network.state_dict(), tr_network.state_dict()
+
+
+
+
+
+#uses epochs cba to rewrite
+def train_teacher_network(tr_optim, tr_network, T_epochs, tr_loader_train, tr_loader_valid, criterion, device, verbose=True):
+    num_params = len(parameters_to_vector(tr_network.parameters()))
+    # print(f"Teacher network has {num_params} parameters.")
+    
+    samples_theta = torch.empty((T_epochs, num_params), device='cpu')
+    tr_nll = []
+    results = []
+
+    # Create a tqdm progress bar for the epochs loop if verbose is True
+    T = tqdm(range(T_epochs), desc="Total Progress", disable=not verbose)
+
+    print(f"--- Starting Teacher Training for {T_epochs} epochs ---")
+    for t in T:
+        tr_network.train()
+        
+        batch_loop = tqdm(tr_loader_train, desc=f"Epoch {t+1}/{T_epochs}", leave=False, disable=not verbose)
+        
+        for inputs, labels in batch_loop:
+            inputs, labels = inputs.to(device), labels.to(device)
+            inputs = inputs.view(inputs.size(0), -1)
+
+            tr_optim.zero_grad()
+            outputs = tr_network(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            tr_optim.step()
+
+        # Validate and save teacher parameters        
+        validation_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=verbose)
+        
+        # tr_nll.append(validation_nll)
+        results.append({
+            "nll": validation_nll,
+            
+        })
+        
+        current_params = parameters_to_vector(tr_network.parameters()).clone().detach().cpu()
+        samples_theta[t] = current_params
+        
+        if verbose:
+            T.set_postfix(Validation_NLL=f"{validation_nll:.4f}")
+
+    print("--- Finished Teacher Training ---")
+    # return samples_theta, tr_nll
+    return results
+
