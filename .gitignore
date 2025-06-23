@@ -34,6 +34,8 @@ __pycache__/
 *.pyo
 *.pyd
 .DS_Store
+._*
 hpc_venv/
+
 
 !*/.gitkeep

@@ -11,7 +11,6 @@ import torch.nn.functional as F
 import os
 
 
-
 class SGLD(optim.Optimizer):
     def __init__(self, params, lr=1e-3, weight_decay=0, N=1):
         if lr < 0.0:
@@ -28,24 +27,30 @@ class SGLD(optim.Optimizer):
         lr = group['lr']
         weight_decay = group['weight_decay']
         N = group['N']
+
+        if not hasattr(self, 't_counter'):
+            self.t_counter = 0
+        self.t_counter += 1
+
+        if self.t_counter % (100000 * 0.096) == 0:
+            print(f"Step {self.t_counter}: Optimizer using LR = {lr}")
+            
         
         for p in group['params']:
             if p.grad is None:
                 continue
-            
-            #l2 regularization = prior w. N(0,1/tau)
-            #grad L2 = tau*theta
+
+        
+            #l2 regularization = tau*theta
             prior_grad = -weight_decay * p.data
 
-            #This is funky AF:
-                #mean_gradient = p.data.grad = (1/M) * sum_of_gradients
-                    #This means it is the mean of the batches gradient                    
-                #(N/M) * sum_of_gradients = (N/M) * (M * mean_gradient) = N * mean_gradient                
+            #p.grad gives average grad because nn.CrossEntropyLoss() = -1/m * grad
+            #N * sum_of_gradients = (N/M) mean_gradient)     
+            #in torch we optimize form in prob. We want max so negative. 
             ll_grad =  -N * p.grad
             
             gradient_step = 0.5 * lr * (prior_grad + ll_grad)
 
-            #White noise
             noise = torch.randn_like(p.data) * math.sqrt(lr)
 
             w_update = gradient_step + noise
@@ -84,7 +89,6 @@ class FFC_Regression(nn.Module):
 ### We try again from scratch my distil has problems when using full neuraln etworks, paritculary that I dont know the fucking analytical distirbution so what is my log likelihood? ITS FUCKING GONE MATE:( 
 
 def validate_network(model, validation_loader, criterion, device, verbose=True):
-    """Helper function to evaluate the model on the validation set."""
     model.eval()
     total_loss = 0.0
     total_samples = 0
@@ -114,15 +118,9 @@ def U_s(teacher_model, inputs):
         targets = teacher_model(inputs)
     return targets
 
-# def U_circ(tr_model, inputs):
-#     tr_model.eval()
-#     with torch.no_grad():
-#         targets = 
-
-
 
 def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):    
-    tr_optim, tr_network, tr_loader_train, tr_loader_valid = tr_items
+    tr_optim, tr_network, tr_loader_train, tr_loader_valid, tr_scheduler = tr_items
     st_network, st_optim, st_scheduler, U, tr_st_criterion = st_items
     B, H, criterion, device = msc_list       
     V = 500; s = 0
@@ -159,6 +157,7 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
 
         loss.backward()
         tr_optim.step()
+        tr_scheduler.step()
         
 
         if t >= B and (t % H == 0):   
@@ -253,3 +252,107 @@ def train_teacher_network(tr_optim, tr_network, T_epochs, tr_loader_train, tr_lo
     # return samples_theta, tr_nll
     return results
 
+
+
+
+
+
+#Made specifically for MNIST, tau is precision.
+class BayesianRegression():
+    def __init__(self, f, n,m, tau=10):
+        self.tau = tau
+        self.criterion = nn.CrossEntropyLoss(reduction='sum')
+        self.w = f.state_dict()
+        self.f = f
+        self.N = n
+        self.M = m
+        
+
+    def log_prior(self):
+        W = torch.cat([w.view(-1) for w in self.f.parameters()])
+        W_sq = torch.dot(W, W)
+        return -1/2 * self.tau * W_sq
+
+
+    def log_likelihood(self, x,y):
+        outputs = self.f(x)
+        return -self.criterion(outputs, y)
+
+    def log_joint(self, x,y):
+        return self.log_prior() + self.log_likelihood(x,y)
+    
+    def log_joint_gradient(self, x,y):        
+        #prior: analytical grad
+        w_grad_prior_list = [-self.tau* w.data for w in self.f.parameters()]
+        w_grad_prior = torch.cat([w.view(-1) for w in w_grad_prior_list])
+
+        #likelihood: autodiff grad
+        self.f.zero_grad()
+        w_grad_likelihood_loss = self.log_likelihood(x,y)
+        w_grad_likelihood_loss.backward()
+        w_grad_likelihood = torch.cat([w.grad.view(-1) for w in self.f.parameters()])
+
+        return w_grad_prior + self.N/self.M * w_grad_likelihood
+
+    
+    def sgld_step(self, x, y, lr):
+        grad = self.log_joint_gradient(x,y)
+
+        with torch.no_grad():
+            noise = torch.randn_like(grad) * math.sqrt(2*lr)
+            w_deltas = lr/2 * grad + noise
+
+            offset = 0
+            for w in self.f.parameters():
+                wslice = w.view(-1).shape[0]
+                w_delta = w_deltas[offset : offset+wslice].view(w.shape)  
+                w.add_(w_delta)
+                offset += wslice
+
+
+
+#Distillation shot2
+#I am now implementing everything from scratch, god help us all.
+def bayesian_distillation(tr_items, msc_items, tr_hyp_par, T_total=1e10, verbose=True):
+    tr_bayers, tr_network, tr_loader_train, tr_loader_valid = tr_items
+    B, H, criterion, device = msc_items
+    lr_init, decay_gamma, lr_b = tr_hyp_par
+    train_iterator = itertools.cycle(tr_loader_train)
+    results = []
+
+
+    bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
+
+    print(f"--- Starting Distillation Process for {T_total} steps ---")
+    
+    T = tqdm(range(T_total), desc="Total Steps", disable=not verbose, bar_format=bar_format)
+
+    #These learning rates is directly influences by the batch size
+    tr_criterion_nll = nn.CrossEntropyLoss(reduction='mean')
+
+    for t in T:
+        lr = lr_init * (lr_b + t)**(-decay_gamma)
+        T.set_postfix(LR=f"{lr:.2e}") 
+        inputs, labels = next(train_iterator)
+        inputs, labels = inputs.to(device), labels.to(device)
+        inputs = inputs.view(inputs.size(0), -1)
+
+        #The tr_network should be inside here
+        tr_bayers.sgld_step(inputs, labels, lr)
+
+        #log train and validation here
+        if t >= B and (t % H == 0):
+            with torch.no_grad():            
+                outputs = tr_network(inputs)
+                tr_nll_train = tr_criterion_nll(outputs, labels)
+                tr_network.eval()  
+                teacher_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=False)
+                
+            results.append({
+                't': t + 1,
+                'tr_nll': teacher_nll,
+                'tr_nll_train': tr_nll_train.item(),
+            })        
+
+            tr_network.train()
+    return results, tr_network.state_dict()
