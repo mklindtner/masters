@@ -16,7 +16,7 @@
 #BSUB -gpu "num=1:mode=exclusive_process"
 
 ### -- set walltime limit: hh:mm --
-#BSUB -W 23:00
+#BSUB -W 7:00
 
 ### -- request RAM in GB. A100 nodes have lots of RAM, so we can ask for a good amount. --
 #BSUB -R "rusage[mem=16GB]"
