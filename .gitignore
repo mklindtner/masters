@@ -13,29 +13,37 @@ mnist/
 mnist/*
 
 #Experiment
+experiment/figs/
 experiment/figs/*
-experiment/statistics
 experiment/weights
+experiment/weights/*
 experiment/debugging_sgld/*
+experiment/statistics/
 experiment/sensitivity/*
-experiment/deprecated/*
 experiment/deprecated/
+experiment/deprecated/*
 
 experiment/hpc_output/*
 experiment/hpc_err/*
-experiment/weights/*
-!experiment/debugging_sgld/.gitkeep
-!experiment/sensitivity/.gitkeep
 
-experiment/figs/
-experiment/statistics/
 experiment/weights/
 experiment/hpc_output/
 experiment/hpc_err/
 experiment/debugging_sgld/
-experiment/sensitivity/
 experiment/short_runs/
 experiment/single_runs/
+experiment/tmp/
+
+
+experiment/MNIST_distillation/
+!experiment/MNIST_distillation/.gitkeep
+
+!experiment/debugging_sgld/.gitkeep
+!experiment/sensitivity/.gitkeep
+
+
+
+
 
 
 
