@@ -1,20 +1,47 @@
+
+#Etc.
 .vscode
-data/*
-__pycache__/*
-mnist/*
-tmp/__pycache__/*
-tmp/__pycache__/
 images/*
-__pycache__/
+.DS_Store
+._*
+
+
+#Data
+data/
+data/*
+mnist/
+mnist/*
+
+#Experiment
 experiment/figs/*
 experiment/statistics
 experiment/weights
 experiment/debugging_sgld/*
 experiment/sensitivity/*
+experiment/deprecated/*
+experiment/deprecated/
+
+experiment/hpc_output/*
+experiment/hpc_err/*
+experiment/weights/*
 !experiment/debugging_sgld/.gitkeep
 !experiment/sensitivity/.gitkeep
 
+# Ignore all generated output directories
+experiment/figs/
+experiment/statistics/
+experiment/weights/
+experiment/hpc_output/
+experiment/hpc_err/
 
+# Ignore specific run folders
+experiment/debugging_sgld/
+experiment/sensitivity/
+experiment/short_runs/
+experiment/single_runs/
+
+
+#Parkinsons
 parkinsons_telemonitoring/__pycache__
 parkinsons_telemonitoring/data/__pycache__
 parkinsons_telemonitoring/data/fitted_tensors.pt
@@ -29,17 +56,16 @@ parkinsons_telemonitoring/SGLD_ablation/old_ablation1/*
 !parkinsons_telemonitoring/SGLD_ablation/.gitkeep
 
 
-experiment/hpc_output/*
-experiment/hpc_err/*
-experiment/weights/*
 
+#Python
 __pycache__/
+__pycache__/*
+tmp/__pycache__/*
+tmp/__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.DS_Store
-._*
 hpc_venv/
 
-
+#For folders
 !*/.gitkeep
