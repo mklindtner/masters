@@ -1,38 +1,24 @@
 #!/bin/sh
-# ---------------------------------------------------------------------
-# LSF Directives for Bayesian Teacher Sensitivity Study on MNIST
-# This version saves all outputs for each trial into a unique folder.
-# ---------------------------------------------------------------------
 #BSUB -q gpua100
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -W 8:00
 #BSUB -n 4
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
-
-# --- Job Array ---
 #BSUB -J "BayesAblation[1-16]"
-
-
-# LSF will save logs here first. We will move them later.
 #BSUB -o experiment/tmp/abl_out_%J_%I.out
 #BSUB -e experiment/tmp/abl_err_%J_%I.err
 
-# ---------------------------------------------------------------------
-# Environment Setup and Execution
-# ---------------------------------------------------------------------
 echo "--- Setting up environment for Job Array Index: $LSB_JOBINDEX ---"
-
-# Load modules and activate environment
 module load cuda/12.2
 module load python3/3.11.9
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 # --- Hyperparameter Selection ---
-# Set baseline parameters first
 TAU_PARAM=15.0
 POLY_A_PARAM=2.23e-5
 POLY_B_PARAM=1150.0
+POLY_GAMMA_PARAM=0.55
 
 # Use a 'case' statement to override one parameter
 case $LSB_JOBINDEX in
@@ -58,15 +44,13 @@ case $LSB_JOBINDEX in
     16) TAU_PARAM=1.0 ;;
 esac
 
-# --- THE KEY CHANGE: Define and create the unique output directory ---
-RUN_NAME="T1M_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}"
+RUN_NAME="T1M_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
 OUTPUT_DIR="experiment/sensitivity/$RUN_NAME"
 mkdir -p $OUTPUT_DIR
 
-# --- Run the Python script with the selected parameters ---
 echo "--- Starting Trial $LSB_JOBINDEX ---"
 echo "Saving all artifacts to: $OUTPUT_DIR"
-echo "Parameters: T=1e6, tau=$TAU_PARAM, poly_a=$POLY_A_PARAM, poly_b=$POLY_B_PARAM"
+echo "Parameters: T=1e6, tau=$TAU_PARAM, poly_a=$POLY_A_PARAM, poly_b=$POLY_B_PARAM, poly_g=$POLY_GAMMA_PARAM"
 
 python /zhome/25/e/155273/masters/experiment/experiment1_sensitivity_study.py \
     --iterations 1000000 \
@@ -77,9 +61,7 @@ python /zhome/25/e/155273/masters/experiment/experiment1_sensitivity_study.py \
 
 echo "--- Python Script Finished ---"
 
-# --- Final Step: Move the LSF log files into the run's directory ---
-echo "Moving log files..."
-mv /tmp/abl_out_%J_%I.out $OUTPUT_DIR/run_output.out
-mv /tmp/abl_err_%J_%I.err $OUTPUT_DIR/run_error.err
-
+echo "Moving log files to final destination..."
+mv experiment/tmp/single_run_$LSB_JOBID.out $OUTPUT_DIR/run_output.out
+mv experiment/tmp/single_run_$LSB_JOBID.err $OUTPUT_DIR/run_error.err
 echo "--- Trial $LSB_JOBINDEX Fully Completed ---"

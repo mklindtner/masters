@@ -16,7 +16,6 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 
 
-
 def main(args):    
     tr_items, msc_items, T_total_from_setup = setup_distillation_experiment(args.batch_size)
     T_total = args.iterations if args.iterations is not None else T_total_from_setup

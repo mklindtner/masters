@@ -147,7 +147,7 @@ def plot_results_MNIST(results_data, timestamp, hp, output_dir=path_exp_MNIST_de
     
     df = pd.DataFrame(results_data)
     t_steps = df['t']
-    teacher_nll_val = df['tr_nll']
+    teacher_nll_val = df['tr_nll_val']
     teacher_nll_train = df['tr_nll_train']
     
     window_size = 10

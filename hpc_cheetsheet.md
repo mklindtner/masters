@@ -20,6 +20,9 @@ voltash, sxm2sh (pref), a100sh
 - bstat
 - bsub < batchjob.sh
 - nodestat -F hpc
+- bkill <bjobid>
+- showstart <jobid>
+- bpeek <jobid>
 
 
 # SCP

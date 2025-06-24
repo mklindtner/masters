@@ -153,9 +153,17 @@ def distil_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):
         
 
         if t >= B and (t % H == 0):   
-            T.set_postfix(Status="Distilling")
-            # st_network.train() 
-            tr_network.eval()  
+            with torch.no_grad():
+                T.set_postfix(Status="Distilling")
+                # st_network.train() 
+                tr_network.eval()  
+                teacher_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=False)
+                results.append({
+                    't': t + 1,
+                    'tr_nll_val': teacher_nll,
+                    'tr_nll_train': loss.item(),
+                    # 'st_nll': student_nll,
+                })        
             # distill_inputs, _ = next(train_iterator)
             # distill_inputs = distill_inputs.to(device).view(distill_inputs.size(0), -1)
 
@@ -181,13 +189,8 @@ def distil_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):
 
             
             # student_nll = validate_network(st_network, tr_loader_valid, criterion, device, verbose=False)
-            teacher_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=False)
-            results.append({
-                't': t + 1,
-                'tr_nll': teacher_nll,
-                'tr_nll_train': tr_nll_train,
-                # 'st_nll': student_nll,
-            })        
+
+            
     
     print("--- Finished Distillation Process ---")
     return results, tr_network.state_dict()
