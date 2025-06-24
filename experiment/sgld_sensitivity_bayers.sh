@@ -1,11 +1,11 @@
 #!/bin/sh
 #BSUB -q gpua100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -W 8:00
+#BSUB -W 2:00
 #BSUB -n 4
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
-#BSUB -J "BayesAblation[1-16]"
+#BSUB -J "BayesAblation[1-10]"
 #BSUB -o experiment/tmp/abl_out_%J_%I.out
 #BSUB -e experiment/tmp/abl_err_%J_%I.err
 
@@ -15,7 +15,7 @@ module load python3/3.11.9
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 # --- Hyperparameter Selection ---
-TAU_PARAM=15.0
+TAU_PARAM=520.0
 POLY_A_PARAM=2.23e-5
 POLY_B_PARAM=1150.0
 POLY_GAMMA_PARAM=0.55
@@ -24,24 +24,15 @@ POLY_GAMMA_PARAM=0.55
 case $LSB_JOBINDEX in
     1) echo "Running BASELINE trial" ;;
     # Varying Prior Precision (tau)
-    2)  TAU_PARAM=5.0 ;;
-    3)  TAU_PARAM=10.0 ;;
-    4)  TAU_PARAM=15.0 ;;
-    5)  TAU_PARAM=20.0 ;;
-    6)  TAU_PARAM=30.0 ;;
-    # Varying LR Initial Value (poly_a)
-    7)  POLY_A_PARAM=1.00e-5 ;;
-    8)  POLY_A_PARAM=5.00e-5 ;;
-    9)  POLY_A_PARAM=1.00e-4 ;;
-    # Varying LR Decay Shape (poly_b)
-    10) POLY_B_PARAM=500.0 ;;
-    11) POLY_B_PARAM=2000.0 ;;
-    12) POLY_B_PARAM=5000.0 ;;
-    # Extreme values
-    13) TAU_PARAM=100.0 ;;
-    14) POLY_A_PARAM=1.00e-6 ;;
-    15) POLY_B_PARAM=100.0 ;;
-    16) TAU_PARAM=1.0 ;;
+    2)  TAU_PARAM=540.0 ;;
+    3)  TAU_PARAM=560.0 ;;
+    4)  TAU_PARAM=580.0 ;;
+    5)  TAU_PARAM=600.0 ;;
+    6)  TAU_PARAM=620.0 ;;
+    7)  TAU_PARAM=640.0 ;;
+    8)  TAU_PARAM=660.0 ;;
+    9)  TAU_PARAM=680.0 ;;
+    10) TAU_PARAM=700.0 ;;   
 esac
 
 RUN_NAME="T1M_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
@@ -53,7 +44,7 @@ echo "Saving all artifacts to: $OUTPUT_DIR"
 echo "Parameters: T=1e6, tau=$TAU_PARAM, poly_a=$POLY_A_PARAM, poly_b=$POLY_B_PARAM, poly_g=$POLY_GAMMA_PARAM"
 
 python /zhome/25/e/155273/masters/experiment/experiment1_sensitivity_study.py \
-    --iterations 1000000 \
+    --iterations 200000 \
     --tau $TAU_PARAM \
     --tr_poly_a $POLY_A_PARAM \
     --tr_poly_b $POLY_B_PARAM \

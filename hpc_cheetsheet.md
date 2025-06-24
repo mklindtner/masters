@@ -23,6 +23,11 @@ voltash, sxm2sh (pref), a100sh
 - bkill <bjobid>
 - showstart <jobid>
 - bpeek <jobid>
+- bqueues
+    - look for gpus with small pending
+
+
+
 
 
 # SCP
