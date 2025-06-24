@@ -4,6 +4,7 @@ path_exp_stat = "experiment/statistics"
 path_exp_weights = "experiment/weights"
 path_exp_fig_sens_figs = "experiment/sensitivity/figs"
 path_exp_fig_sens_stat = "experiment/sensitivity/statistics"
+path_exp_MNIST_default = "experiment/MNIST_distillation/short_run"
 
 #Telemonitoring
 path_parkin_data_csv = "parkinsons_telemonitoring/data/parkinsons_data.csv"

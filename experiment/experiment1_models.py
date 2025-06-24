@@ -119,23 +119,16 @@ def U_s(teacher_model, inputs):
     return targets
 
 
-def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):    
-    tr_optim, tr_network, tr_loader_train, tr_loader_valid, tr_scheduler = tr_items
-    st_network, st_optim, st_scheduler, U, tr_st_criterion = st_items
+def distil_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):    
+    tr_optim, tr_network, tr_loader_train, tr_loader_valid = tr_items
+    # st_network, st_optim, st_scheduler, U, tr_st_criterion = st_items
     B, H, criterion, device = msc_list       
-    V = 500; s = 0
+    s = 0
 
     train_iterator = itertools.cycle(tr_loader_train)
-    
     results = []
-
-
     bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
-
-    print(f"--- Starting Distillation Process for {T_total} steps ---")
-    
-    # //Modified
-    # The tqdm constructor now uses our custom bar_format.
+    print(f"--- Starting Distillation Process for {T_total} steps ---")    
     T = tqdm(range(T_total), desc="Total Steps", disable=not verbose, bar_format=bar_format)
 
 
@@ -157,7 +150,6 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
 
         loss.backward()
         tr_optim.step()
-        tr_scheduler.step()
         
 
         if t >= B and (t % H == 0):   
@@ -198,8 +190,9 @@ def distillation_posterior_MNIST(tr_items, st_items, msc_list, T_total=1e10, ver
             })        
     
     print("--- Finished Distillation Process ---")
-
-    return results, st_network.state_dict(), tr_network.state_dict()
+    return results, tr_network.state_dict()
+    #Make this back once the SGLD works
+    # return results, st_network.state_dict(), tr_network.state_dict()
 
 
 

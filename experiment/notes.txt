@@ -1,2 +1,5 @@
-data-url: https://archive.ics.uci.edu/dataset/45/heart+disease
-pip: pip install ucimlrepo
+"experiment1_training_MNIST.py"
+    - this is trying to faithfully reproduce the results from MNIST using constant lr
+
+"experiment1_sensitivity_study.py" 
+    - this is trying to reproduce the results using polyonomial decay

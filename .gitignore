@@ -27,18 +27,16 @@ experiment/weights/*
 !experiment/debugging_sgld/.gitkeep
 !experiment/sensitivity/.gitkeep
 
-# Ignore all generated output directories
 experiment/figs/
 experiment/statistics/
 experiment/weights/
 experiment/hpc_output/
 experiment/hpc_err/
-
-# Ignore specific run folders
 experiment/debugging_sgld/
 experiment/sensitivity/
 experiment/short_runs/
 experiment/single_runs/
+
 
 
 #Parkinsons

@@ -39,9 +39,9 @@ def main(args):
     hp_dict = vars(args)
 
     
-    plot_results_bayers(results, timestamp=timestamp ,hp=hp_dict)
-    save_results_to_csv_bayers(results, timestamp=timestamp, hp=hp_dict)
-    # store_weights(tr_w, "teacher_weights", timestamp=timestamp) # Optional: save weights
+    plot_results_bayers(results, timestamp=timestamp ,hp=hp_dict, output_dir=args.output_dir)
+    save_results_to_csv_bayers(results, timestamp=timestamp, hp=hp_dict, output_dir=args.output_dir)
+    # store_weights(tr_w, "teacher_weights", timestamp=timestamp, output_dir=args.output_dir) # Optional: save weights
 
 
 if __name__ == '__main__':
@@ -59,8 +59,20 @@ if __name__ == '__main__':
     parser.add_argument('--tr_poly_gamma',  type=float, default=DEFAULT_TR_POLY_DECAY_GAMMA, help='(Polynomial decay): gamma decay')
     parser.add_argument('--tr_poly_b', type=float, default=DEFAULT_TR_POLY_LR_B, help='(Polynomial decay): b decay')
 
+    parser.add_argument('--output_dir', type=str, default=None, help='Directory to save all run artifacts')
 
     args = parser.parse_args()
+
+    if args.output_dir is None:
+        run_name = (
+            f"default_run_T={args.iterations}_"
+            f"tau={args.tau}_"
+            f"M={args.batch_size}_"
+            f"a={args.tr_poly_a:.1e}_"
+            f"b={args.tr_poly_b}_"
+            f"g={args.tr_poly_gamma}"
+        )
+        args.output_dir = f"experiment/short_runs/{run_name}"
 
     print("--- Setting up experiment with the following parameters: ---")
     print(f"  Data size (N): {args.N}, Batch Size (M): {args.batch_size}, Prior Precision (tau): {args.tau}")
