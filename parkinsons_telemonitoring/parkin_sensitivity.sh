@@ -1,42 +1,21 @@
 #!/bin/sh
-# ---------------------------------------------------------------------
-# LSF Directives for SGLD Ablation Study
-# ---------------------------------------------------------------------
-#BSUB -q gpua100
+#BSUB -q gpua10
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -W 2:30  # Walltime per trial (adjust if 100k iterations takes longer)
 #BSUB -n 4
 #BSUB -R "rusage[mem=16GB]"
-#BSUB -B
-#BSUB -N
-
-# --- Job Array ---
-# This submits all 26 trials for our study.
-#BSUB -J "SGLD_ablation[1-26]"
-
-# --- Output Files ---
-# Use %J for the main job ID and %I for the array index to get unique log files.
+#BSUB -J "parkinSens[1-26]"
 #BSUB -o parkinsons_telemonitoring/SGLD_ablation/logs/abl_%J_%I.out
 #BSUB -e parkinsons_telemonitoring/SGLD_ablation/logs/abl_%J_%I.err
 
-# ---------------------------------------------------------------------
-# Environment Setup and Execution
-# ---------------------------------------------------------------------
 echo "--- Setting up environment for Job Array Index: $LSB_JOBINDEX ---"
 
-# Create log directories if they don't exist
 mkdir -p parkinsons_telemonitoring/SGLD_ablation/logs
-
-# Load modules
 module load cuda/12.2
 module load python3/3.11.9
-
-# Activate virtual environment
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 # --- Hyperparameter Selection ---
-# Set baseline parameters first
-# These are taken from your parkinsons_data.py defaults
 LR_PARAM=4e-6
 TAU_PARAM=10.0
 BS_PARAM=64
@@ -79,7 +58,6 @@ case $LSB_JOBINDEX in
     26) BS_PARAM=256 ;;
 esac
 
-# --- Run the Python script with the selected parameters ---
 echo "--- Starting Trial $LSB_JOBINDEX ---"
 echo "Parameters: T=100000, lr=$LR_PARAM, batch_size=$BS_PARAM, tau=$TAU_PARAM"
 

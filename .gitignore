@@ -59,6 +59,9 @@ parkinsons_telemonitoring/statistics/*
 parkinsons_telemonitoring/weights/*
 parkinsons_telemonitoring/SGLD_ablation/*
 parkinsons_telemonitoring/SGLD_ablation/old_ablation1/*
+parkinsons_telemonitoring/deprecated/
+parkinsons_telemonitoring/SGLD_single_run/
+parkinsons_telemonitoring/SGLD_sensitivity/
 !parkinsons_telemonitoring/SGLD_ablation/.gitkeep
 
 

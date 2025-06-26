@@ -19,7 +19,7 @@ from experiment.experiment1_models import FFC_Regression, U_s, BayesianRegressio
 EXP_MNIST_T = 1e6
 EXP_MNIST_B = 1000
 EXP_MNIST_H = 100
-EXP_MNIST_TAU = 10.0
+EXP_MNIST_TAU = 1.0
 EXP_MNIST_TR_LR = 4e-6
 EXP_MNIST_DATASZ = 60000
 EXP_MNIST_BZ = 256

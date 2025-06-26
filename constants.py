@@ -11,6 +11,7 @@ path_parkin_data_csv = "parkinsons_telemonitoring/data/parkinsons_data.csv"
 path_parkin_stat = "parkinsons_telemonitoring/statistics"
 path_parkin_fig = "parkinsons_telemonitoring/figs"
 path_parkin_weights ="parkinsons_telemonitoring/weights"
+# path_parkin_sensitivity ="parkins"
 
 TENSOR_DATA_FILE = 'parkinsons_telemonitoring/data/fitted_tensors.pt'
 SCALER_X_FILE = 'parkinsons_telemonitoring/data/scaler_X.joblib'
