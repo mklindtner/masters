@@ -25,7 +25,7 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir):
     teacher_nll_train = df['tr_nll_train']
     window_size = 10
     teacher_nll_train_smooth = teacher_nll_train.rolling(window=window_size).mean()
-    teacher_nll_val_smooth = teacher_nll_val.rolling(window_window_size).mean()
+    teacher_nll_val_smooth = teacher_nll_val.rolling(window=window_size).mean()
     
     title_str = (
         f"Parkinsons Teacher GaussNLL: ({hp['iterations']} iterations)\n"

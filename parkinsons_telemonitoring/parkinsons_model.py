@@ -18,8 +18,7 @@ class FCC_Regression_Parkinsons_Mean(nn.Module):
 
         self.fc3_mean = nn.Linear(400, 1)
 
-#For stort netværk?
-class FFC_Regression_Parkinsons(nn.Module):#
+class FFC_Regression_Parkinsons(nn.Module):
 
     def __init__(self, input_size, dropout_rate=0.5):
         super().__init__()

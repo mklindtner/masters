@@ -15,7 +15,7 @@
 
 # --- Set the specific hyperparameters for this test run ---
 ITERATIONS=1000000
-TAU_PARAM=10
+TAU_PARAM=1
 POLY_A_PARAM=4.00e-6
 POLY_B_PARAM=0
 POLY_GAMMA_PARAM=0

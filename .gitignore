@@ -33,6 +33,7 @@ experiment/debugging_sgld/
 experiment/short_runs/
 experiment/single_runs/
 experiment/tmp/
+experiment/keep/
 
 
 experiment/MNIST_distillation/
@@ -40,7 +41,7 @@ experiment/MNIST_distillation/
 
 !experiment/debugging_sgld/.gitkeep
 !experiment/sensitivity/.gitkeep
-
+experiment/keep/.gitkeep
 
 
 
@@ -63,8 +64,15 @@ parkinsons_telemonitoring/deprecated/
 parkinsons_telemonitoring/SGLD_single_run/
 parkinsons_telemonitoring/SGLD_sensitivity/
 !parkinsons_telemonitoring/SGLD_ablation/.gitkeep
+parkinsons_telemonitoring/var_const/singlevar_runs/
 
 
+
+#Images / log files
+*.out
+*.err
+*.csv
+*.png
 
 #Python
 __pycache__/
