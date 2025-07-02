@@ -65,7 +65,11 @@ voltash, sxm2sh (pref), a100sh
 - in vscode terminal do 
     - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m parkinsons_telemonitoring/parkinsons_training
     - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m experiment.experiment1_training
+    - python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m experiment.experiment1_sensitivity_study
 - in "run and debug" click Green arrow
+
+# Normally
+- python -m parkinsons_telemonitoring.parkinsons_training
 
 # Potential problems
 - When activate the virtual environemnet using alias "mml" vscode crashes when running import torch

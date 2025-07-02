@@ -16,6 +16,7 @@ from datetime import datetime
 from experiment.experiment1_stat_plot import save_results_to_csv_bayers, plot_results_bayers, store_weights
 import argparse
 
+timestamp = None
 
 def main(args):
     tr_bayers, tr_model, train_loader, test_loader, val_criterion, device = setup_experiment(
@@ -35,7 +36,7 @@ def main(args):
         T_total=args.iterations
     )
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     hp_dict = vars(args)
 
     
@@ -72,7 +73,8 @@ if __name__ == '__main__':
             f"b={args.tr_poly_b}_"
             f"g={args.tr_poly_gamma}"
         )
-        args.output_dir = f"experiment/short_runs/{run_name}"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        args.output_dir = f"experiment/short_runs/{timestamp}_{run_name}"
 
     print("--- Setting up experiment with the following parameters: ---")
     print(f"  Data size (N): {args.N}, Batch Size (M): {args.batch_size}, Prior Precision (tau): {args.tau}")

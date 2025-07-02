@@ -1,12 +1,12 @@
 #!/bin/sh
-#BSUB -q gpuv100
+#BSUB -q gpua40
 #BSUB -J sgldPolyRun
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 # --------------------------------------------------------------------- 
 # NB! Adjust for wallclock time when adjusting iterations!
 # --------------------------------------------------------------------- 
-#BSUB -W 5:00 
+#BSUB -W 7:20 
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
 #BSUB -o experiment/tmp/single_runs/single_run_%J.out
@@ -14,12 +14,15 @@
 
 
 # --- Set the specific hyperparameters for this test run ---
-ITERATIONS=500000
-TAU_PARAM=300.0
-POLY_A_PARAM=5.00e-6
-POLY_B_PARAM=1150.0
-POLY_GAMMA_PARAM=0.55
-RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
+ITERATIONS=1000000
+TAU_PARAM=10
+POLY_A_PARAM=4.00e-6
+POLY_B_PARAM=0
+POLY_GAMMA_PARAM=0
+BATCH_SIZE=100
+
+PARAM_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
+RUN_NAME="${PARAM_NAME}_J${LSB_JOBID}"
 OUTPUT_DIR="experiment/single_runs/$RUN_NAME"
 
 # --- Setup Environment --- 
@@ -41,6 +44,7 @@ python /zhome/25/e/155273/masters/experiment/experiment1_sensitivity_study.py \
     --tr_poly_a $POLY_A_PARAM \
     --tr_poly_b $POLY_B_PARAM \
     --tr_poly_gamma $POLY_GAMMA_PARAM \
+    --batch_size $BATCH_SIZE \
     --output_dir $OUTPUT_DIR
 
 

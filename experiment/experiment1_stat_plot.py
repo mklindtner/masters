@@ -16,9 +16,14 @@ def save_results_to_csv_bayers(results_data, hp, timestamp, output_dir=path_exp_
         return None
 
     print("\n--- Saving Results to CSV ---")
-    
     results_df = pd.DataFrame(results_data)    
-    results_df = results_df.assign(**hp)
+    final_validation_accuracy = results_df['tr_acc_val'].iloc[-1]
+
+    final_error_rate_pct = (1 - final_validation_accuracy) * 100
+    
+    hp_with_summary = hp.copy()
+    hp_with_summary['final_error_rate_pct'] = final_error_rate_pct
+    results_df = results_df.assign(**hp_with_summary)
     
 
     csv_filename = (
@@ -36,6 +41,7 @@ def save_results_to_csv_bayers(results_data, hp, timestamp, output_dir=path_exp_
     results_df.to_csv(full_path, index=False)
 
     print(f"Results saved to {full_path}")
+    print(f"Final Validation Error Rate: {final_error_rate_pct:.3f}%")
     
     print("\nResults Preview (with hyperparameters):")
     print(results_df.head())
@@ -54,13 +60,19 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir=path_exp_fig_sen
     df = pd.DataFrame(results_data)
 
     t_steps = df['t']
-    teacher_nll_val = df['tr_nll']
-    teacher_nll_train = df['tr_nll_train']
+    tr_nll_val = df['tr_nll_val']
+    # tr_acc_val = df['tr_acc_val']
+    tr_nll_train = df['tr_nll_train']
+    # tr_acc_train = df['tr_acc_train']
     window_size = 10
-    teacher_nll_train_smooth = teacher_nll_train.rolling(window=window_size).mean()
+    teacher_nll_train_smooth = tr_nll_train.rolling(window=window_size).mean()
     
+
+    final_val_acc = df['tr_acc_val'].iloc[-1] 
+    final_train_acc = df['tr_acc_train'].iloc[-1]
+
     title_str = (
-        f"Teacher/Student NLL: ({hp['iterations']} iterations)\n"
+        f"Teacher/Student NLL: ({hp['iterations']} iterations) |  (Final err rate Train/Val: {(1-final_train_acc)*100:.2f}%/{(1-final_val_acc) * 100:.2f}%)\n"
         f"(Poly Decay: a={hp['tr_poly_a']:.2e}, b={hp['tr_poly_b']:.0f}, γ={hp['tr_poly_gamma']}) | "
         f"(Data: M={hp['batch_size']}, τ={hp['tau']})"
     )
@@ -68,8 +80,8 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir=path_exp_fig_sen
     plt.figure(figsize=(12, 7))
     ax = plt.gca()
 
-    ax.plot(t_steps, teacher_nll_val, marker='o', linestyle='-', label='Teacher NLL Validation')
-    ax.plot(t_steps, teacher_nll_train, marker='o', color="pink", linestyle='None', alpha=0.3, label='Teacher NLL Train (Raw)')
+    ax.plot(t_steps, tr_nll_val, marker='o', linestyle='-', label='Teacher NLL Validation')
+    ax.plot(t_steps, tr_nll_train, marker='o', color="pink", linestyle='None', alpha=0.3, label='Teacher NLL Train (Raw)')
     ax.plot(t_steps, teacher_nll_train_smooth, color="red", linestyle='-', label=f'Teacher NLL Train (Smoothed, w={window_size})')
     
 
@@ -105,7 +117,8 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir=path_exp_fig_sen
     os.makedirs(output_dir, exist_ok=True)
     full_path = os.path.join(output_dir, plot_filename)
     
-    plt.savefig(full_path)
+    plt.savefig(full_path, bbox_inches='tight')
+    plt.close()
     print(f"Plot saved to {full_path}")
 
 

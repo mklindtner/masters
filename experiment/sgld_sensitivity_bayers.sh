@@ -1,7 +1,7 @@
 #!/bin/sh
-#BSUB -q gpua10
+#BSUB -q gpua100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -W 2:30
+#BSUB -W 7:30
 #BSUB -n 4
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
@@ -15,28 +15,21 @@ module load python3/3.11.9
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 # --- Hyperparameter Selection ---
-ITERATIONS=200000
-TAU_PARAM=440.0
-POLY_A_PARAM=5.00e-6
-POLY_B_PARAM=1150.0
-POLY_GAMMA_PARAM=0.55
+ITERATIONS=1000000
+TAU_PARAM=1
+POLY_A_PARAM=4.00e-6
+POLY_B_PARAM=0
+POLY_GAMMA_PARAM=0
+BATCH_SIZE=100
 
 # Use a 'case' statement to override one parameter
 case $LSB_JOBINDEX in
-    1)  POLY_B_PARAM=5000.0 ;;
-    2)  POLY_B_PARAM=8888.0 ;;
-    3)  POLY_B_PARAM=12776.0 ;;
-    4)  POLY_B_PARAM=16664.0 ;;
-    5)  POLY_B_PARAM=20552.0 ;;
-    6)  POLY_B_PARAM=24440.0 ;;
-    7)  POLY_B_PARAM=28328.0 ;;
-    8)  POLY_B_PARAM=32216.0 ;;
-    9)  POLY_B_PARAM=36104.0 ;;
-    10) POLY_B_PARAM=40000.0 ;;
+    1)  TAU_PARAM=1 ;;
+    2)  TAU_PARAM=10 ;;
 esac
 
 RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
-OUTPUT_DIR="experiment/sensitivity/run5/$RUN_NAME"
+OUTPUT_DIR="experiment/sensitivity/run7/$RUN_NAME"
 mkdir -p $OUTPUT_DIR
 
 echo "--- Starting Trial $LSB_JOBINDEX ---"
@@ -48,7 +41,9 @@ python /zhome/25/e/155273/masters/experiment/experiment1_sensitivity_study.py \
     --tau $TAU_PARAM \
     --tr_poly_a $POLY_A_PARAM \
     --tr_poly_b $POLY_B_PARAM \
-    --output_dir $OUTPUT_DIR # Pass the unique directory to Python
+    --tr_poly_gamma $POLY_GAMMA_PARAM \
+    --batch_size $BATCH_SIZE \
+    --output_dir $OUTPUT_DIR
 
 echo "--- Python Script Finished ---"
 

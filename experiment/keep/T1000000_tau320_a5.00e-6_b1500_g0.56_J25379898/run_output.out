@@ -1,0 +1,49 @@
+--- Starting Single Test Run ---
+All outputs will be saved to: experiment/single_runs/T1000000_tau320_a5.00e-6_b1500_g0.56_J25379898
+Parameters: T=1000000, tau=320, poly_a=5.00e-6, poly_b=1500
+Running on GPU:
+Mon Jun 30 15:07:44 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 575.57.08              Driver Version: 575.57.08      CUDA Version: 12.9     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla V100-SXM2-32GB           On  |   00000000:15:00.0 Off |                    0 |
+| N/A   32C    P0             40W /  300W |       0MiB /  32768MiB |      0%   E. Process |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+--- Setting up experiment with the following parameters: ---
+  Data size (N): 60000, Batch Size (M): 100, Prior Precision (tau): 320.0
+  Training: 1000000 iterations, Burn-in: 1000, Logging Freq (H): 100
+  Poly Decay LR: a=5e-06, b=1500.0, gamma=0.56
+---------------------------------------------------------
+--- Starting Distillation Process for 1000000 steps ---
+
+--- Plotting Results ---
+Plot saved to experiment/single_runs/T1000000_tau320_a5.00e-6_b1500_g0.56_J25379898/MNIST_None_T=1000000_M=100_tau=320.0_a=5.0e-06_b=1500.0_g=0.56.png
+
+--- Saving Results to CSV ---
+Results saved to experiment/single_runs/T1000000_tau320_a5.00e-6_b1500_g0.56_J25379898/MNIST_None_T=1000000_M=100_tau=320.0_a=5.0e-06_b=1500.0_g=0.56.csv
+Final Validation Error Rate: 4.020%
+
+Results Preview (with hyperparameters):
+      t  ...  final_error_rate_pct
+0  1001  ...                  4.02
+1  1101  ...                  4.02
+2  1201  ...                  4.02
+3  1301  ...                  4.02
+4  1401  ...                  4.02
+
+[5 rows x 16 columns]
+Moving log files to final destination...
+--- Single Test Run Finished ---

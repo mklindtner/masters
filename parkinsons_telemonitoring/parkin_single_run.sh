@@ -10,7 +10,7 @@
 #BSUB -e parkinsons_telemonitoring/SGLD_single_run/gpu_%J.err
 
 # ------------------
-ITERATIONS=1000000
+ITERATIONS=20000
 TAU_PARAM=10.0
 POLY_A_PARAM=5.00e-6
 POLY_B_PARAM=1000.0

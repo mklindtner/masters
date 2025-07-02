@@ -66,7 +66,6 @@ class SGLD(optim.Optimizer):
 
 
 class FFC_Regression(nn.Module):
-
     def __init__(self, input_size, output_size=1, dropout_rate=0.5):
         super(FFC_Regression, self).__init__()
         self.fc1 = nn.Linear(input_size, 400)
@@ -92,6 +91,7 @@ def validate_network(model, validation_loader, criterion, device, verbose=True):
     model.eval()
     total_loss = 0.0
     total_samples = 0
+    correct_predictions = 0
     
     # Create a tqdm progress bar for the validation loop if verbose is True
     val_loop = tqdm(validation_loader, desc="Validating", leave=False, disable=not verbose)
@@ -106,8 +106,15 @@ def validate_network(model, validation_loader, criterion, device, verbose=True):
             
             total_loss += loss.item() * inputs.size(0)
             total_samples += inputs.size(0)
-            
-    return total_loss / total_samples
+
+            _, predvalidx = torch.max(outputs, 1)
+            correct_predictions += (predvalidx == labels).sum().item()
+
+
+
+    nll_val = total_loss / total_samples
+    acc_val = correct_predictions / total_samples
+    return nll_val,  acc_val
 
 
 
@@ -133,6 +140,7 @@ def distil_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):
 
 
     for t in T:
+       
         tr_network.train()        
         inputs, labels = next(train_iterator)
         
@@ -279,7 +287,7 @@ class BayesianRegression():
     
     def log_joint_gradient(self, x,y):        
         #prior: analytical grad
-        w_grad_prior_list = [-self.tau* w.data.view(-1) for w in self.f.parameters()]
+        w_grad_prior_list = [-self.tau/2 * w.data.view(-1) for w in self.f.parameters()]
         w_grad_prior = torch.cat([w.view(-1) for w in w_grad_prior_list])
 
         #likelihood: autodiff grad
@@ -295,7 +303,7 @@ class BayesianRegression():
         grad = self.log_joint_gradient(x,y)
 
         with torch.no_grad():
-            noise = torch.randn_like(grad) * math.sqrt(2*lr)
+            noise = torch.randn_like(grad) * math.sqrt(lr)
             w_deltas = lr/2 * grad + noise
 
             offset = 0
@@ -341,13 +349,21 @@ def bayesian_distillation(tr_items, msc_items, tr_hyp_par, T_total=1e10, verbose
             with torch.no_grad():            
                 outputs = tr_network(inputs)
                 tr_nll_train = tr_criterion_nll(outputs, labels)
+
+                #accuracy here
+                _, predicted_train = torch.max(outputs.data, 1)
+                correct_train = (predicted_train == labels).sum().item()
+                tr_acc_train = correct_train / labels.size(0)
+
                 tr_network.eval()  
-                teacher_nll = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=False)
+                tr_nll_val, tr_acc_val = validate_network(tr_network, tr_loader_valid, criterion, device, verbose=False)
                 
             results.append({
                 't': t + 1,
-                'tr_nll': teacher_nll,
+                'tr_nll_val': tr_nll_val,
+                'tr_acc_val': tr_acc_val,
                 'tr_nll_train': tr_nll_train.item(),
+                'tr_acc_train': tr_acc_train
             })        
 
             tr_network.train()

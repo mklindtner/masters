@@ -20,18 +20,21 @@ if torch.cuda.is_available():
 def MNIST_dataloaders(bsz):
     transform = transforms.Compose([
         transforms.ToTensor(), 
-        transforms.Normalize((0.1307,), (0.3081,))
+        transforms.Lambda(lambda x: x*(255.0/ 126.0))
     ])
+
 
     trainset = torchvision.datasets.MNIST(root='./data',train=True,download=True,transform=transform)
     trainloader = DataLoader(trainset, batch_size=bsz, shuffle=True, num_workers=0)
+    # print(torch.max(next(iter(trainloader))[0][0]))
+    # return
     testset = torchvision.datasets.MNIST(root='./data',train=False,download=True,transform=transform)
     testloader = DataLoader(testset, batch_size=bsz, shuffle=False, num_workers=0)
 
     return trainloader, testloader
 
 #cat1 hyp par
-DEFAULT_T = int(2e4)
+DEFAULT_T = int(2e5)
 DEFAULT_H = 100
 DEFAULT_B = 1000
 DEFAULT_TAU = 45

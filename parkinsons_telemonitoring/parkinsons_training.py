@@ -1,7 +1,7 @@
 import argparse
 from datetime import datetime
 from parkinsons_telemonitoring.parkinsons_data import DEFAULT_TR_POLY_A, DEFAULT_TR_POLY_DECAY_GAMMA, DEFAULT_TR_POLY_LR_B, DEFAULT_OUTPUT_FOLDER, setup_experiment, DEFAULT_BATCH_SIZE, DEFAULT_TR_LR, DEFAULT_TAU, DEFAULT_ST_DROPOUT, DEFAULT_ST_LR_INIT, DEFAULT_BURNIN, DEFAULT_H, DEFAULT_T
-from parkinsons_telemonitoring.parkinsons_model import distillation_posterior_parkinsons, bayesian_distillation_parkin
+from parkinsons_telemonitoring.parkinsons_model import bayesian_distillation_parkin
 from parkinsons_telemonitoring.parkinsons_stat_plot import plot_results_bayers, save_results_to_csv_bayers
 
 def main(args):
@@ -21,6 +21,7 @@ def main(args):
     if args.output_dir == None:
         print("no output dir given, exiting")
         return
+    
     #new2
     results, _ = bayesian_distillation_parkin(tr_list, msc_items=msc_list, tr_hyp_par=tr_hyp_param, T_total=args.iterations)
     hp_dict = vars(args)
@@ -28,14 +29,6 @@ def main(args):
     plot_results_bayers(results_data=results, timestamp=timestamp, hp=hp_dict, output_dir=args.output_dir)
     save_results_to_csv_bayers(results_data=results, hp=hp_dict, timestamp=timestamp, output_dir=args.output_dir)
 
-    #old
-    # log_results, final_tr_w, final_st_w = distillation_posterior_parkinsons(
-    #     tr_list, st_list, msc_list, T_steps=args.T
-    # )
-    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # plot_tr_results_distillation(log_results, timestamp=timestamp, T=T)
-    # save_results_to_csv(log_results, timestamp=timestamp, T=T)
-    # store_weights(final_tr_w, final_st_w, timestamp=timestamp, T=T) 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Parkinsons Telemonitoring distillation experiment.')
