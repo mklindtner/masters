@@ -15,8 +15,8 @@ module load python3/3.11.9
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 # --- Hyperparameter Selection ---
-ITERATIONS=1000000
-TAU_PARAM=1
+ITERATIONS=20000
+TAU_PARAM=10
 POLY_A_PARAM=4.00e-6
 POLY_B_PARAM=0
 POLY_GAMMA_PARAM=0
@@ -24,8 +24,7 @@ BATCH_SIZE=100
 
 # Use a 'case' statement to override one parameter
 case $LSB_JOBINDEX in
-    1)  TAU_PARAM=1 ;;
-    2)  TAU_PARAM=10 ;;
+    1)  TAU_PARAM=10 ;;
 esac
 
 RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"

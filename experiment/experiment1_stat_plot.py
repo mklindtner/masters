@@ -64,9 +64,11 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir=path_exp_fig_sen
     # tr_acc_val = df['tr_acc_val']
     tr_nll_train = df['tr_nll_train']
     # tr_acc_train = df['tr_acc_train']
+    st_nll_val = df['st_nll_val']
     window_size = 10
     teacher_nll_train_smooth = tr_nll_train.rolling(window=window_size).mean()
-    
+    tr_nll_val_smooth = tr_nll_val.rolling(window=window_size).mean()
+    st_nll_val_smooth = st_nll_val.rolling(window=window_size).mean()    
 
     final_val_acc = df['tr_acc_val'].iloc[-1] 
     final_train_acc = df['tr_acc_train'].iloc[-1]
@@ -80,9 +82,12 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir=path_exp_fig_sen
     plt.figure(figsize=(12, 7))
     ax = plt.gca()
 
-    ax.plot(t_steps, tr_nll_val, marker='o', linestyle='-', label='Teacher NLL Validation')
+    # ax.plot(t_steps, tr_nll_val, marker='o', linestyle='-', label='Teacher NLL Validation')
     ax.plot(t_steps, tr_nll_train, marker='o', color="pink", linestyle='None', alpha=0.3, label='Teacher NLL Train (Raw)')
-    ax.plot(t_steps, teacher_nll_train_smooth, color="red", linestyle='-', label=f'Teacher NLL Train (Smoothed, w={window_size})')
+    ax.plot(t_steps, tr_nll_val_smooth, marker='o', linestyle='-', label='Teacher NLL Validation')
+    ax.plot(t_steps, st_nll_val_smooth, color="green", marker='s', markersize=3, linestyle='--', label=f'Student NLL Validation (Smoothed, w={window_size})')
+
+    # ax.plot(t_steps, teacher_nll_train_smooth, color="red", linestyle='-', label=f'Teacher NLL Train (Smoothed, w={window_size})')
     
 
     #it looks ugly af if I dont make some sort of writing on the x-axis

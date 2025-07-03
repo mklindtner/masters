@@ -1,12 +1,12 @@
 #!/bin/sh
-#BSUB -q gpua100
+#BSUB -q gpua40
 #BSUB -J parkinVar
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -W 01:00
+#BSUB -W 07:00
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=16GB]"
-#BSUB -J "pkinGrid[1-2]"
+#BSUB -J "varGrid[1-5]"
 #BSUB -o parkinsons_telemonitoring/var_const/singlevar_runs/tmp/gpu_%J_%I.out 
 #BSUB -e parkinsons_telemonitoring/var_const/singlevar_runs/tmp/gpu_%J_%I.err
 
@@ -15,7 +15,7 @@ echo "--- Setting up environment for Job Array Index: $LSB_JOBINDEX ---"
 
 # ------------------
 # --- Default
-ITERATIONS=20000
+ITERATIONS=1000000
 TAU_PARAM=10.0
 BATCH_SIZE=256
 
@@ -33,11 +33,14 @@ module load python3/3.11.9
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 case $LSB_JOBINDEX in
-    1)  TR_VAR=0.055 ;;
-    2)  TR_VAR=0.828 ;;
+    1) TR_VAR=0.055 ;;
+    2) TR_VAR=0.106 ;;
+    3) TR_VAR=0.205 ;;
+    4) TR_VAR=0.398 ;;
+    5) TR_VAR=0.828 ;;
 esac
 
-RUN=2
+RUN=4
 # RUN_NAME="T${ITERATIONS}_VAR${TR_VAR}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
 RUN_NAME="T${ITERATIONS}_VAR${TR_VAR}"
 OUTPUT_DIR="parkinsons_telemonitoring/var_const/singlevar_runs/run$RUN/trial$LSB_JOBID_${LSB_JOBINDEX}_${RUN_NAME}"

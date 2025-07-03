@@ -1,5 +1,3 @@
-# plot_linear_fit.py
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from constants import path_parkin_data_csv
 import pandas as pd
-# Import your existing data loading function
 from parkinsons_telemonitoring.data.parkinsons_dataloaders import parkinsons_dataloaders
 
 # --- 1. Define the Simple Linear Model ---

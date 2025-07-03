@@ -16,21 +16,23 @@ from datetime import datetime
 from experiment.experiment1_stat_plot import save_results_to_csv_bayers, plot_results_bayers, store_weights
 import argparse
 
+
 timestamp = None
 
 def main(args):
-    tr_bayers, tr_model, train_loader, test_loader, val_criterion, device = setup_experiment(
+    tr_items_bayers, st_items, val_criterion, device = setup_experiment(
         batch_size=args.batch_size,
         tau=args.tau,
-        N=args.N
+        N=args.N,
+        H=args.H
     )
 
-    tr_items_bayers = [tr_bayers, tr_model, train_loader, test_loader]
     msc_items = [args.B, args.H, val_criterion, device]
     tr_hyp_par = [args.tr_poly_a, args.tr_poly_gamma, args.tr_poly_b]
 
     results, tr_w = bayesian_distillation(
         tr_items=tr_items_bayers,
+        st_items=st_items,
         msc_items=msc_items,
         tr_hyp_par=tr_hyp_par,
         T_total=args.iterations

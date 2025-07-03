@@ -1,12 +1,12 @@
 #!/bin/sh
-#BSUB -q gpua40
-#BSUB -J sgldPolyRun
+#BSUB -q gpua100
+#BSUB -J mnist
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
 # --------------------------------------------------------------------- 
 # NB! Adjust for wallclock time when adjusting iterations!
 # --------------------------------------------------------------------- 
-#BSUB -W 7:20 
+#BSUB -W 9:20 
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
 #BSUB -o experiment/tmp/single_runs/single_run_%J.out
@@ -14,8 +14,8 @@
 
 
 # --- Set the specific hyperparameters for this test run ---
-ITERATIONS=1000000
-TAU_PARAM=1
+ITERATIONS=100000
+TAU_PARAM=10
 POLY_A_PARAM=4.00e-6
 POLY_B_PARAM=0
 POLY_GAMMA_PARAM=0

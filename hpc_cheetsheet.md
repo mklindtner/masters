@@ -70,6 +70,7 @@ voltash, sxm2sh (pref), a100sh
 
 # Normally
 - python -m parkinsons_telemonitoring.parkinsons_training
+- python -m experiment.experiment1_sensitivity_study
 
 # Potential problems
 - When activate the virtual environemnet using alias "mml" vscode crashes when running import torch

@@ -1,5 +1,5 @@
 #!/bin/sh
-#BSUB -q gpua40
+#BSUB -q gpua100
 #BSUB -J parkinSingle
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"

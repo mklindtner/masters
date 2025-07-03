@@ -25,7 +25,7 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir):
         print("no output dir specified, cancelling")
         return
 
-    print("\n--- Plotting Results ---")
+    print("\n--- Plotting Results ---")     
 
     df = pd.DataFrame(results_data)
 
@@ -45,7 +45,7 @@ def plot_results_bayers(results_data, timestamp, hp, output_dir):
     plt.figure(figsize=(12, 7))
     ax = plt.gca()
 
-    ax.plot(t_steps, teacher_nll_val_smooth, marker='o', linestyle='-', label='Teacher NLL Validation (Smoothed, w={window_size})')
+    ax.plot(t_steps, teacher_nll_val_smooth, marker='o', linestyle='-', label=f'Teacher NLL Validation (Smoothed, w={window_size})')
     # ax.plot(t_steps, teacher_nll_train, marker='o', color="pink", linestyle='None', alpha=0.3, label='Teacher NLL Train (Raw)')
     ax.plot(t_steps, teacher_nll_train_smooth, color="red", linestyle='-', label=f'Teacher NLL Train (Smoothed, w={window_size})')
     
