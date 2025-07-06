@@ -15,6 +15,9 @@ TAU_PARAM=10.0
 POLY_A_PARAM=5.00e-6
 POLY_B_PARAM=1000.0
 POLY_GAMMA_PARAM=0.55
+ST_TYPE="mean_and_variance"
+VAL_STEP=50000
+
 RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
 OUTPUT_DIR="parkinsons_telemonitoring/SGLD_single_run/$RUN_NAME"
 
@@ -40,6 +43,8 @@ python -m parkinsons_telemonitoring.parkinsons_training \
     --tr_poly_a $POLY_A_PARAM \
     --tr_poly_b $POLY_B_PARAM \
     --tr_poly_gamma $POLY_GAMMA_PARAM \
+    --student_model $ST_TYPE \
+    --val_step $VAL_STEP
     --output_dir $OUTPUT_DIR
 
 

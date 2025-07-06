@@ -69,7 +69,7 @@ voltash, sxm2sh (pref), a100sh
 - in "run and debug" click Green arrow
 
 # Normally
-- python -m parkinsons_telemonitoring.parkinsons_training
+- python -m parkinsons_telemonitoring.parkinsons_training --student_mode "mean_and_variance" --iterations 2000
 - python -m experiment.experiment1_sensitivity_study
 
 # Potential problems

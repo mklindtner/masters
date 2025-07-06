@@ -3,3 +3,6 @@
 
 "experiment1_sensitivity_study.py" 
     - this is trying to reproduce the results using polyonomial decay
+
+
+Newest in single run is w. old optimizer

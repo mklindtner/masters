@@ -9,7 +9,8 @@ from experiment.experiment1_data_bayers import (
     DEFAULT_N,
     DEFAULT_TR_POLY_INIT_LR,
     DEFAULT_TR_POLY_DECAY_GAMMA, 
-    DEFAULT_TR_POLY_LR_B
+    DEFAULT_TR_POLY_LR_B,
+    DEFAULT_VAL_STEP
 )
 import matplotlib.pyplot as plt 
 from datetime import datetime
@@ -29,12 +30,12 @@ def main(args):
 
     msc_items = [args.B, args.H, val_criterion, device]
     tr_hyp_par = [args.tr_poly_a, args.tr_poly_gamma, args.tr_poly_b]
-
     results, tr_w = bayesian_distillation(
         tr_items=tr_items_bayers,
         st_items=st_items,
         msc_items=msc_items,
         tr_hyp_par=tr_hyp_par,
+        val_step=args.val_step,
         T_total=args.iterations
     )
 
@@ -62,10 +63,12 @@ if __name__ == '__main__':
     parser.add_argument('--tr_poly_gamma',  type=float, default=DEFAULT_TR_POLY_DECAY_GAMMA, help='(Polynomial decay): gamma decay')
     parser.add_argument('--tr_poly_b', type=float, default=DEFAULT_TR_POLY_LR_B, help='(Polynomial decay): b decay')
 
+    parser.add_argument('--val_step', type=float, default=DEFAULT_VAL_STEP, help='(Polynomial decay): b decay')
     parser.add_argument('--output_dir', type=str, default=None, help='Directory to save all run artifacts')
 
     args = parser.parse_args()
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if args.output_dir is None:
         run_name = (
             f"default_run_T={args.iterations}_"
@@ -73,14 +76,12 @@ if __name__ == '__main__':
             f"M={args.batch_size}_"
             f"a={args.tr_poly_a:.1e}_"
             f"b={args.tr_poly_b}_"
-            f"g={args.tr_poly_gamma}"
+            f"g={args.tr_poly_gamma}"            
         )
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         args.output_dir = f"experiment/short_runs/{timestamp}_{run_name}"
-
     print("--- Setting up experiment with the following parameters: ---")
     print(f"  Data size (N): {args.N}, Batch Size (M): {args.batch_size}, Prior Precision (tau): {args.tau}")
     print(f"  Training: {args.iterations} iterations, Burn-in: {args.B}, Logging Freq (H): {args.H}")
-    print(f"  Poly Decay LR: a={args.tr_poly_a}, b={args.tr_poly_b}, gamma={args.tr_poly_gamma}")
+    print(f"  Poly Decay LR: a={args.tr_poly_a}, b={args.tr_poly_b}, gamma={args.tr_poly_gamma}, val_step:{args.val_step}")
     print("---------------------------------------------------------")
     main(args)

@@ -87,7 +87,7 @@ class FFC_Regression(nn.Module):
 
 
 
-#Old validate
+#Validate student network
 def validate_network(model, validation_loader, criterion, device, verbose=True):
     model.eval()
     total_loss = 0.0
@@ -95,8 +95,8 @@ def validate_network(model, validation_loader, criterion, device, verbose=True):
     correct_predictions = 0
     
     # Create a tqdm progress bar for the validation loop if verbose is True
-    val_loop = tqdm(validation_loader, desc="Validating", leave=False, disable=not verbose)
-    
+    val_loop = validation_loader
+
     with torch.no_grad():
         for inputs, labels in val_loop:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -266,10 +266,12 @@ def validate_network_bayesian(network, weight_samples, val_loader, device):
     """
     network.eval()
     all_predictions = []
-    
     all_targets = None
 
-    for sample_state_dict in weight_samples:
+    sample_loop = tqdm(weight_samples, desc="  Validating Teacher (BMA)", leave=False)
+
+
+    for sample_state_dict in sample_loop:
         network.load_state_dict({k: v.to(device) for k, v in sample_state_dict.items()})
         
         model_preds = []
@@ -378,29 +380,17 @@ class BayesianRegression():
                 offset += wslice
 
     def log_likelihood_selfimpl(self, x, y):
-        """
-        Calculates log-likelihood from scratch using log_softmax and nll_loss.
-        This is the numerically stable way to do it.
-        """
-        # 1. Get the raw logit scores from the network
         logits = self.f(x)
-        
-        # 2. Apply the log_softmax function. This is more stable than softmax then log.
         log_probs = F.log_softmax(logits, dim=1)
-        
-        # 3. Use nll_loss, which expects log-probabilities. Sum the losses for the batch.
-        #    This gives the Negative Log Likelihood.
         nll = F.nll_loss(log_probs, y, reduction='sum')
-        
-        # 4. Return the positive Log Likelihood
         return -nll
 
     def log_joint_gradient_selfimpl(self, x, y):
-        """Calculates the log-joint gradient using the self-implemented likelihood."""
+        #prior analytical
         w_grad_prior = torch.cat([-self.tau * w.data.view(-1) for w in self.f.parameters()])
-
+        
+        #likelihood
         self.f.zero_grad()
-        # Use the new self-implemented likelihood function
         log_l = self.log_likelihood_selfimpl(x, y)
         log_l.backward()
         w_grad_likelihood = torch.cat([w.grad.view(-1) for w in self.f.parameters()])
@@ -408,8 +398,6 @@ class BayesianRegression():
         return w_grad_prior + (self.N / self.M) * w_grad_likelihood
 
     def sgld_step_selfimpl(self, x, y, lr):
-        """Performs SGLD step using the self-implemented gradient calculation."""
-        # Call the new gradient function
         grad = self.log_joint_gradient_selfimpl(x, y)
         with torch.no_grad():
             noise = torch.randn_like(grad) * math.sqrt(lr)
@@ -425,7 +413,7 @@ class BayesianRegression():
 
 
 
-def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, T_total=1e10, verbose=True):
+def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T_total=1e10, verbose=True):
     tr_bayers, tr_network, tr_loader_train, tr_loader_valid = tr_items
     st_network, st_optim, st_scheduler, tr_st_criterion = st_items
     B, H, criterion, device = msc_items
@@ -433,22 +421,27 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, T_total=1e1
     train_iterator = itertools.cycle(tr_loader_train)
     results = []
 
-    #So I dont run out of memory on the GPU
-    W_samples = collections.deque(maxlen=1000)
 
+
+    #So I dont run out of memory on the GPU
+    tr_W_samples = collections.deque(maxlen=1000)
 
     bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
-
     print(f"--- Starting Distillation Process for {T_total} steps ---")
-    
     T = tqdm(range(T_total), desc="Total Steps", disable=not verbose, bar_format=bar_format)
-
     #These learning rates is directly influences by the batch size
     tr_criterion_nll = nn.CrossEntropyLoss(reduction='mean')
 
+    tr_cur_nll_val = float('inf') # Use infinity as a placeholder
+    st_cur_nll_val = float('inf')
+
     for t in T:
         lr = lr_init * (lr_b + t)**(-decay_gamma)
-        T.set_postfix(LR=f"{lr:.2e}") 
+        T.set_postfix({
+            'LR': f"{lr:.2e}",
+            'Teacher NLL': f"{tr_cur_nll_val:.4f}",
+            'Student NLL': f"{st_cur_nll_val:.4f}"
+        })
 
         inputs, labels = next(train_iterator)
         inputs, labels = inputs.to(device), labels.to(device)
@@ -456,59 +449,61 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, T_total=1e1
 
         #tr_bayes' have tr_network inside it
         tr_bayers.sgld_step(inputs, labels, lr)
+        # tr_bayers.sgld_step_selfimpl(inputs, labels,lr)
 
         if t >= (B-1000):
             # Create a deep copy on the CPU to avoid storing references and save VRAM
             current_weights = {k: v.cpu().clone() for k, v in tr_network.state_dict().items()}
-            W_samples.append(current_weights)
+            tr_W_samples.append(current_weights)
 
         if t >= B and (t % H == 0):
-            if len(W_samples) < 100:
+            if len(tr_W_samples) < 100:
                     continue 
-
+            #Consider only using most recent when I am training, only the mean is relevant for the average
             st_network.train()
             tr_network.eval()
 
-            W_tr_samples = random.sample(list(W_samples), 100)
+            with torch.no_grad():
+                teacher_logits = tr_network(inputs)
+
+
+            #Follow the example in Dark knowledge where they add a little noise to the input.
             noise_std = 0.001
             noise = torch.randn_like(inputs) * noise_std
             noisy_inputs = inputs + noise
-
-            with torch.no_grad():            
-                tr_preds = []
-                for sample in W_tr_samples:
-                    tr_network.load_state_dict({k: v.to(device) for k, v in sample.items()})
-                    tr_preds.append(tr_network(inputs))
-                avg_teacher_logits = torch.mean(torch.stack(tr_preds, dim=0), dim=0)
-
-            #st forward pass
+          
+            #forward pass
             student_logits = st_network(noisy_inputs)
-            soft_targets = F.log_softmax(avg_teacher_logits, dim=-1)
-            soft_predictions = F.log_softmax(student_logits, dim=-1)
-
-            #KL_Div
-            st_loss = tr_st_criterion(soft_predictions, soft_targets)
+            tr_targets = F.softmax(teacher_logits, dim=-1)
+            st_log_probs = F.log_softmax(student_logits, dim=-1)
+            
+            #Loss
+            st_loss = -torch.sum(tr_targets * st_log_probs) / student_logits.size(0)
+            
             st_optim.zero_grad()
             st_loss.backward()
             st_optim.step()
-            st_scheduler.step()
+            if st_scheduler:
+                st_scheduler.step()
 
-            tr_network.train()
+
 
 
 
         #validation here
-        if t >= B and (t % 10000 == 0):
-            # if len(W_samples) < 100:
-            #         continue 
+        if t >= B and (t % val_step == 0):
+            tr_network.eval()  
+
             with torch.no_grad():            
-                tr_network.eval()  
-                W_tr_samples = random.sample(list(W_samples), 100)
+                tr_W_samples_rng = random.sample(list(tr_W_samples), 100)                
 
-                tr_nll_train, tr_acc_train = get_bayesian_train_metrics(tr_network, W_tr_samples, inputs, labels, device)
-                tr_nll_val, tr_acc_val = validate_network_bayesian(tr_network, W_tr_samples, tr_loader_valid, device)
-                st_nll_val, st_acc_val = validate_network(st_network, tr_loader_valid, criterion, device, verbose=False)
+                tr_nll_train, tr_acc_train = get_bayesian_train_metrics(tr_network, tr_W_samples_rng, inputs, labels, device)
+                tr_nll_val, tr_acc_val = validate_network_bayesian(tr_network, tr_W_samples_rng, tr_loader_valid, device)
+                st_nll_val, st_acc_val = validate_network(st_network, tr_loader_valid, criterion, device)
 
+                
+                tr_cur_nll_val = tr_nll_val
+                st_cur_nll_val = st_nll_val              
 
                 
             results.append({

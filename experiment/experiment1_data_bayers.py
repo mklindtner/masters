@@ -45,6 +45,8 @@ DEFAULT_TR_POLY_INIT_LR = 4e-6
 DEFAULT_TR_POLY_DECAY_GAMMA = 0.55
 DEFAULT_TR_POLY_LR_B = 17.0
 
+DEFAULT_VAL_STEP = DEFAULT_T*0.2
+
 
 
 def setup_experiment(batch_size, tau, N, H):
