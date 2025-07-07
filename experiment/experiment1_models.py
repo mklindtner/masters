@@ -429,8 +429,9 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T
     bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
     print(f"--- Starting Distillation Process for {T_total} steps ---")
     T = tqdm(range(T_total), desc="Total Steps", disable=not verbose, bar_format=bar_format)
-    #These learning rates is directly influences by the batch size
-    tr_criterion_nll = nn.CrossEntropyLoss(reduction='mean')
+    
+
+    # tr_criterion_nll = nn.CrossEntropyLoss(reduction='mean')
 
     tr_cur_nll_val = float('inf') # Use infinity as a placeholder
     st_cur_nll_val = float('inf')
@@ -448,32 +449,29 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T
         inputs = inputs.view(inputs.size(0), -1)
 
         #tr_bayes' have tr_network inside it
-        tr_bayers.sgld_step(inputs, labels, lr)
-        # tr_bayers.sgld_step_selfimpl(inputs, labels,lr)
+        # tr_bayers.sgld_step(inputs, labels, lr)
+        tr_bayers.sgld_step_selfimpl(inputs, labels,lr)
 
         if t >= (B-1000):
-            # Create a deep copy on the CPU to avoid storing references and save VRAM
             current_weights = {k: v.cpu().clone() for k, v in tr_network.state_dict().items()}
             tr_W_samples.append(current_weights)
 
         if t >= B and (t % H == 0):
             if len(tr_W_samples) < 100:
                     continue 
-            #Consider only using most recent when I am training, only the mean is relevant for the average
             st_network.train()
             tr_network.eval()
 
             with torch.no_grad():
                 teacher_logits = tr_network(inputs)
 
-
-            #Follow the example in Dark knowledge where they add a little noise to the input.
-            noise_std = 0.001
-            noise = torch.randn_like(inputs) * noise_std
-            noisy_inputs = inputs + noise
+            # noise_std = 0.001
+            # noise = torch.randn_like(inputs) * noise_std
+            # noisy_inputs = inputs + noise
           
             #forward pass
-            student_logits = st_network(noisy_inputs)
+            # student_logits = st_network(noisy_inputs)
+            student_logits = st_network(inputs)
             tr_targets = F.softmax(teacher_logits, dim=-1)
             st_log_probs = F.log_softmax(student_logits, dim=-1)
             
@@ -488,9 +486,6 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T
 
 
 
-
-
-        #validation here
         if t >= B and (t % val_step == 0):
             tr_network.eval()  
 

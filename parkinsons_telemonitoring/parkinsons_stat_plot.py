@@ -5,6 +5,141 @@ import numpy as np
 from constants import path_parkin_stat, path_parkin_fig, path_parkin_weights
 import torch
 from matplotlib.ticker import FuncFormatter
+import matplotlib.ticker as mticker
+import uncertainty_toolbox as uct
+from tqdm.auto import tqdm
+
+def save_uncertainty_metrics_to_csv(metrics, output_dir, timestamp):
+    """
+    Flattens the nested metrics dictionary and saves it as a single-row CSV file.
+    """
+    flat_metrics = {}
+    
+    # Loop through the main categories to flatten the dictionary
+    for category, sub_dict in metrics.items():
+        if isinstance(sub_dict, dict):
+             for metric_name, value in sub_dict.items():
+                # Create a new, unique key (e.g., 'accuracy_rmse')
+                flat_key = f"{category}_{metric_name}"
+                flat_metrics[flat_key] = value
+            
+    # Convert the flattened dictionary to a pandas DataFrame
+    metrics_df = pd.DataFrame(flat_metrics, index=[0])
+    
+    # Save to CSV
+    filename = f"uncertainty_metrics_{timestamp}.csv"
+    filepath = os.path.join(output_dir, filename)
+    metrics_df.to_csv(filepath, index=False)
+    
+    print(f"\nUncertainty metrics saved to {filepath}")
+
+
+def bayes_predictions(network, weight_samples, loader, device):
+    """
+    Performs Bayesian Model Averaging to get final predictions and uncertainty.
+    Returns:
+        (np.array, np.array, np.array): y_pred_mean, y_pred_std, y_true
+    """
+    network.eval()
+    all_means_across_samples = []
+
+    # Get predictions for each weight sample
+    for sample_weights in tqdm(weight_samples, desc="Getting BMA Predictions"):
+        network.load_state_dict({k: v.to(device) for k, v in sample_weights.items()})
+        batch_means = []
+        with torch.no_grad():
+            for data, _ in loader:
+                data = data.to(device)
+                mean, _ = network(data) # We only need the mean from each model
+                batch_means.append(mean)
+        all_means_across_samples.append(torch.cat(batch_means))
+
+    # Collect ground truth labels once
+    y_true = torch.cat([target for _, target in loader]).cpu().numpy().flatten()    
+    
+    # Calculate the final predictive mean and standard deviation
+    stacked_means = torch.stack(all_means_across_samples, dim=0)
+    y_pred_mean = torch.mean(stacked_means, dim=0).cpu().numpy().flatten()
+    y_pred_std = torch.std(stacked_means, dim=0).cpu().numpy().flatten()
+
+    return y_pred_mean, y_pred_std, y_true
+
+
+def calculate_and_print_uncertainty_metrics(y_pred_mean, y_pred_std, y_true):
+    """
+    Uses uncertainty-toolbox to calculate and print all standard metrics.
+    """
+    print("\n" + "="*50)
+    print("  Uncertainty and Calibration Metrics")
+    print("="*50)
+
+    # Get all metrics from the toolbox
+    metrics = uct.metrics.get_all_metrics(y_pred_mean, y_pred_std, y_true)
+       
+    scoring_rule_metrics = metrics.get("scoring_rule", {})
+    accuracy_metrics = metrics.get("accuracy", {})
+    calibration_metrics = metrics.get("avg_calibration", {})
+    sharpness_metrics = metrics.get("sharpness", {})
+    print(f"  Average NLL:                {scoring_rule_metrics.get('nll', float('nan')):.4f}")
+    print(f"  RMSE:                       {accuracy_metrics.get('rmse', float('nan')):.4f}")
+    print(f"  Miscalibration Area:        {calibration_metrics.get('miscal_area', float('nan')):.4f}")
+    print(f"  Sharpness (Avg. Std Dev):   {sharpness_metrics.get('sharp', float('nan')):.4f}")
+    print("="*50)
+    
+    return metrics
+
+
+def plot_uncertainty_visualizations(y_pred_mean, y_pred_std, y_true, output_dir, timestamp):
+    """
+    Uses uncertainty-toolbox to generate and save standard plots individually.
+    """
+    print("\nGenerating uncertainty plots...")
+
+    # This is the most important plot for uncertainty quality.
+    print("  - Generating calibration plot...")
+    fig_cal, ax_cal = plt.subplots(1, 1, figsize=(8, 8))
+    uct.viz.plot_calibration(y_pred_mean, y_pred_std, y_true, ax=ax_cal)
+    
+    cal_filename = f"plot_calibration_{timestamp}.png"
+    cal_filepath = os.path.join(output_dir, cal_filename)
+    fig_cal.savefig(cal_filepath, dpi=300)
+    plt.close(fig_cal)
+    print(f"    Calibration plot saved to {cal_filepath}")
+
+    # This plot visually shows the uncertainty for each prediction.
+    print("  - Generating prediction interval plot...")
+    fig_pi, ax_pi = plt.subplots(1, 1, figsize=(8, 8))
+    uct.viz.plot_intervals(y_pred_mean, y_pred_std, y_true, ax=ax_pi)
+    
+    pi_filename = f"plot_intervals_{timestamp}.png"
+    pi_filepath = os.path.join(output_dir, pi_filename)
+    fig_pi.savefig(pi_filepath, dpi=300)
+    plt.close(fig_pi)
+    print(f"    Prediction interval plot saved to {pi_filepath}")
+
+
+
+def bayes_uncertainty_analysis(tr_items, msc_items, final_teacher_samples, output_dir, timestamp):
+    """
+    Takes the final teacher samples and runs a full uncertainty analysis,
+    generating metrics and plots.
+    """
+    if not final_teacher_samples:
+        print("No teacher samples provided. Skipping uncertainty analysis.")
+        return
+
+    print("\n" + "#"*60)
+    print("  Running Post-Hoc Bayesian Uncertainty Analysis on Teacher Model")
+    print("#"*60)
+
+    # Unpack the necessary components
+    _, teacher_model, _, val_loader = tr_items
+    device = msc_items[3]
+
+    y_pred_mean, y_pred_std, y_true = bayes_predictions(teacher_model, final_teacher_samples, val_loader, device)
+    metrics = calculate_and_print_uncertainty_metrics(y_pred_mean, y_pred_std, y_true)
+    plot_uncertainty_visualizations(y_pred_mean, y_pred_std, y_true, output_dir, timestamp)
+    save_uncertainty_metrics_to_csv(metrics, output_dir, timestamp)
 
 def format_x_axis(ax, total_iterations):
     """
@@ -40,15 +175,16 @@ def format_x_axis(ax, total_iterations):
 def plot_tr_GNLL(results_df, output_dir, timestamp):
     fig, ax = plt.subplots(figsize=(10, 6))
     tsteps = results_df['t']
-    smoothing_window = 10
+    smoothing_window = 5
     train_nll_smooth = results_df['tr_nll_train'].rolling(window=smoothing_window).mean()
 
-    ax.plot(tsteps, results_df['tr_nll_val'], marker='o', linestyle='--', color="blue", label='Teacher GNLL Validation')
-    ax.plot(tsteps, train_nll_smooth, marker='o', linestyle='-', color="red", label=f'Teacher NLL Train (Smoothed, w={smoothing_window})')
-    
-    ax.set_title(f"Teacher GNLL Performance")
+    ax.plot(tsteps, results_df['tr_nll_val'], marker='o', linestyle='--', color="blue", label='Teacher NLL Validation')
+    ax.plot(tsteps, train_nll_smooth, marker='o', linestyle='-', color="pink", label=f'Teacher NLL Train (Smoothed, w={smoothing_window})')
+    # ax.plot(tsteps, results_df['tr_nll_train'], linestyle='-', color="red", label='Teacher NLL Train')
+
+    ax.set_title(f"Teacher NLL Performance")
     ax.set_xlabel("Training Iterations (t)")
-    ax.set_ylabel("Average GNLL")
+    ax.set_ylabel("Average NLL")
 
     total_iterations = results_df['t'].max()
     format_x_axis(ax, total_iterations)
@@ -60,7 +196,7 @@ def plot_tr_GNLL(results_df, output_dir, timestamp):
 
 def plot_gnll_comparison(results_df, output_dir, timestamp):
     """
-    Compares the validation GNLL of the student and teacher models on the same plot.
+    Compares the validation NLL of the student and teacher models on the same plot.
     """
     st_metric = 'st_nll_val'
     tr_metric = 'tr_nll_val'
@@ -142,14 +278,19 @@ def plot_student_variance_mse(results_df, output_dir, timestamp):
     plt.savefig(os.path.join(output_dir, f"plot_student_var_mse_{timestamp}.png"))
     plt.close()
 
-# --- Plot 3: KL Divergence ---
 def plot_kl_divergence(results_df, output_dir, timestamp):
     if 'kl_divergence' not in results_df.columns or results_df['kl_divergence'].isnull().all():
         print("No KL divergence data to plot.")
         return        
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(results_df['t'], results_df['kl_divergence'], marker='.', linestyle='-', color='green', label='KL(student || teacher)')
+
+    smoothing_window = 3
+    kl_smooth = results_df['kl_divergence'].rolling(window=smoothing_window).mean()
+ 
+    ax.plot(results_df['t'], kl_smooth, marker='.', linestyle='-', color='green', label=f'KL Divergence (Smoothed, w={smoothing_window})')
+    # ax.plot(results_df['t'], results_df['kl_divergence'], marker='.', linestyle='-', color='green', label='KL(student || teacher)')
+
     ax.set_title(f"KL Divergence (Student || Teacher)")
     ax.set_xlabel("Training Iterations (t)")
     ax.set_ylabel("KL Divergence")

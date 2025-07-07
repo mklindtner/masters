@@ -1,5 +1,5 @@
 #!/bin/sh
-#BSUB -q gpua100
+#BSUB -q gpuv100
 #BSUB -J "StudentTest[1-3]" 
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
@@ -17,7 +17,7 @@
 
 # --- Shared Hyperparameters ---
 ITERATIONS=1000000
-TAU_PARAM=100.0
+TAU_PARAM=110.0
 POLY_A_PARAM=5.00e-6
 POLY_B_PARAM=1000.0
 POLY_GAMMA_PARAM=0.55

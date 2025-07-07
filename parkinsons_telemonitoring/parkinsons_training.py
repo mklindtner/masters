@@ -2,11 +2,10 @@ import argparse
 from datetime import datetime
 from parkinsons_telemonitoring.parkinsons_data import DEFAULT_TR_POLY_A, DEFAULT_TR_POLY_DECAY_GAMMA, DEFAULT_TR_POLY_LR_B, DEFAULT_OUTPUT_FOLDER, setup_experiment, DEFAULT_BATCH_SIZE, DEFAULT_TR_LR, DEFAULT_TAU, DEFAULT_ST_DROPOUT, DEFAULT_ST_LR_INIT, DEFAULT_BURNIN, DEFAULT_H, DEFAULT_T, DEFAULT_VAL_STEP
 from parkinsons_telemonitoring.parkinsons_model import bayesian_distillation_parkin
-from parkinsons_telemonitoring.parkinsons_stat_plot import create_and_save_plots
-
+from parkinsons_telemonitoring.parkinsons_stat_plot import create_and_save_plots, bayes_uncertainty_analysis
 
 def main(args):
-    tr_list, st_items, tr_hyp_param, msc_list = setup_experiment(
+    tr_items, st_items, tr_hyp_param, msc_items = setup_experiment(
         batch_size=args.batch_size,
         tau=args.tau,
         st_dropout=args.st_dropout,
@@ -22,12 +21,13 @@ def main(args):
     )
 
        
-    results, _ = bayesian_distillation_parkin(tr_list, st_items=st_items, msc_items=msc_list, val_step=args.val_step, tr_hyp_par=tr_hyp_param, T_total=args.iterations)
+    results, tr_samples, _ = bayesian_distillation_parkin(tr_items, st_items=st_items, msc_items=msc_items, val_step=args.val_step, tr_hyp_par=tr_hyp_param, T_total=args.iterations)
     hp_dict = vars(args)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    #New plotting functions here
     create_and_save_plots(results, hp_dict, args.output_dir, timestamp)
+    bayes_uncertainty_analysis(tr_items, msc_items, tr_samples, args.output_dir, timestamp)
+
 
 
 

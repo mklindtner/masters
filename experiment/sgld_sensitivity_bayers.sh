@@ -5,7 +5,7 @@
 #BSUB -n 4
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
-#BSUB -J "decayStudy[1-10]"
+#BSUB -J "decayStudy[1-5]"
 #BSUB -o experiment/tmp/polydecay/abl_out_%J_%I.out
 #BSUB -e experiment/tmp/polydecay/abl_err_%J_%I.err
 
@@ -15,16 +15,20 @@ module load python3/3.11.9
 source /zhome/25/e/155273/masters/hpc_venv/bin/activate
 
 # --- Hyperparameter Selection ---
-ITERATIONS=20000
+ITERATIONS=1000000
 TAU_PARAM=10
 POLY_A_PARAM=4.00e-6
 POLY_B_PARAM=0
 POLY_GAMMA_PARAM=0
-BATCH_SIZE=100
+BATCH_SIZE=256
 
 # Use a 'case' statement to override one parameter
 case $LSB_JOBINDEX in
     1)  TAU_PARAM=10 ;;
+    2)  TAU_PARAM=15 ;;
+    3)  TAU_PARAM=20 ;;
+    4)  TAU_PARAM=25 ;;
+    5)  TAU_PARAM=30 ;;
 esac
 
 RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"

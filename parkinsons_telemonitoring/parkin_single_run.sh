@@ -1,22 +1,22 @@
 #!/bin/sh
-#BSUB -q gpua100
+#BSUB -q gpuv100
 #BSUB -J parkinSingle
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -W 08:00
+#BSUB -W 11:00
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -o parkinsons_telemonitoring/SGLD_single_run/gpu_%J.out
 #BSUB -e parkinsons_telemonitoring/SGLD_single_run/gpu_%J.err
 
 # ------------------
-ITERATIONS=20000
+ITERATIONS=1000000
 TAU_PARAM=10.0
 POLY_A_PARAM=5.00e-6
 POLY_B_PARAM=1000.0
 POLY_GAMMA_PARAM=0.55
 ST_TYPE="mean_and_variance"
-VAL_STEP=50000
+VAL_STEP=10000
 
 RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
 OUTPUT_DIR="parkinsons_telemonitoring/SGLD_single_run/$RUN_NAME"

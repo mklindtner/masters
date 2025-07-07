@@ -325,6 +325,7 @@ def validate_kl_divergence(teacher_network, student_network, weight_samples, val
                 mean, log_var = teacher_network(data)
                 batch_means.append(mean)
                 batch_vars.append(torch.exp(log_var))
+
         all_teacher_means.append(torch.cat(batch_means))
         all_teacher_vars.append(torch.cat(batch_vars))
     
@@ -344,7 +345,6 @@ def validate_kl_divergence(teacher_network, student_network, weight_samples, val
     student_var = torch.cat(student_vars)
     student_dist = D.Normal(student_mean, student_var.sqrt())
 
-    # STEP C: Calculate the KL divergence between the two final distributions
     kl_div = D.kl.kl_divergence(student_dist, teacher_dist).sum()
     
     return kl_div.item() / len(val_loader.dataset)
@@ -420,8 +420,6 @@ def bayesian_distillation_parkin(tr_items, st_items, msc_items, tr_hyp_par, val_
                     continue 
 
             T.set_postfix_str("VALIDATING...")
-            avg_student_loss = np.mean(st_losses)
-            st_losses = []
 
             with torch.no_grad():       
                 st_trainer.student_network.eval()
@@ -438,7 +436,7 @@ def bayesian_distillation_parkin(tr_items, st_items, msc_items, tr_hyp_par, val_
                 
                 if student_mode_name == 'MeanVarianceStudentTrainer':
                     st_nll_val = validate_student_gnll(st_trainer.student_network, tr_loader_valid, eval_criterion, device)
-                    kl_divergence = avg_student_loss
+                    kl_divergence = validate_kl_divergence(tr_network, st_trainer.student_network, tr_W_samples_rng, tr_loader_valid, device)
                 else:
                     st_mse_val = validate_student_mse(st_trainer.student_network, tr_loader_valid, device)
               
@@ -456,4 +454,6 @@ def bayesian_distillation_parkin(tr_items, st_items, msc_items, tr_hyp_par, val_
             })
             tr_network.train()
 
-    return results, tr_network.state_dict()
+    final_teacher_samples = random.sample(list(tr_W_samples), 100)
+
+    return results, final_teacher_samples, st_trainer.student_network.state_dict()

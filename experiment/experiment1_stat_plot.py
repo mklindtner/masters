@@ -58,7 +58,7 @@ def plot_teacher_performance(df, hp, output_dir, timestamp):
     tr_nll_train = df['tr_nll_train']
     
     # Smooth the noisy training curve for better visualization
-    window_size = 10
+    window_size = 5
     tr_nll_train_smooth = tr_nll_train.rolling(window=window_size).mean()
 
     # Get final accuracy values for the title, with checks for existence
