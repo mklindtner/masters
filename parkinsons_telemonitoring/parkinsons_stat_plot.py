@@ -9,6 +9,84 @@ import matplotlib.ticker as mticker
 import uncertainty_toolbox as uct
 from tqdm.auto import tqdm
 
+# In plotting.py
+def plot_metric_over_time(results_df, metric_column, title, ylabel, color, output_dir, timestamp):
+    """
+    A generic function to plot any single metric over time from the results DataFrame.
+    """
+    # Guard Clause: Check if the required column exists and has data
+    if metric_column not in results_df.columns or results_df[metric_column].isnull().all():
+        print(f"Notice: No data found for metric '{metric_column}', skipping plot.")
+        return
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Smooth the metric for better visualization
+    smoothing_window = 5
+    metric_smooth = results_df[metric_column].rolling(window=smoothing_window).mean()
+
+    ax.plot(
+        results_df['t'], 
+        metric_smooth, 
+        linestyle='-', 
+        color=color, 
+        label=f'Smoothed {ylabel} (w={smoothing_window})'
+    )
+    
+    # Add titles, labels, and formatting
+    ax.set_title(title)
+    ax.set_xlabel("Training Iterations (t)")
+    ax.set_ylabel(f"{ylabel}")
+    
+    total_iterations = results_df['t'].max()
+    format_x_axis(ax, total_iterations) # Use your existing helper
+
+    ax.legend()
+    ax.grid(True, linestyle='--')
+    
+    # Save the figure
+    filename = f"plot_{metric_column}_{timestamp}.png"
+    plt.savefig(os.path.join(output_dir, filename))
+    plt.close()
+
+def plot_student_mean_mse_train(results_df, output_dir, timestamp):
+    """Plots the smoothed training MSE for the student's mean prediction."""
+    plot_metric_over_time(
+        results_df=results_df,
+        metric_column='st_mse_mean_train',
+        title='Student Training Loss',
+        ylabel='MSE (Mean)',
+        color='green',
+        output_dir=output_dir,
+        timestamp=timestamp
+    )
+
+def plot_student_variance_mse_train(results_df, output_dir, timestamp):
+    """Plots the smoothed training MSE for the student's variance prediction."""
+    plot_metric_over_time(
+        results_df=results_df,
+        metric_column='st_mse_var_train',
+        title='Student Training Loss',
+        ylabel='MSE (Variance)',
+        color='purple',
+        output_dir=output_dir,
+        timestamp=timestamp
+    )
+
+def plot_student_total_loss(results_df, output_dir, timestamp):
+    """Plots the smoothed total training loss for the MeanVariance student."""
+    plot_metric_over_time(
+        results_df=results_df,
+        metric_column='st_total_loss_train',
+        title='Student Training Loss (Total MSE)',
+        ylabel='Total MSE Loss',
+        color='orange',
+        output_dir=output_dir,
+        timestamp=timestamp
+    )
+
+
 def save_uncertainty_metrics_to_csv(metrics, output_dir, timestamp):
     """
     Flattens the nested metrics dictionary and saves it as a single-row CSV file.
@@ -118,7 +196,6 @@ def plot_uncertainty_visualizations(y_pred_mean, y_pred_std, y_true, output_dir,
     print(f"    Prediction interval plot saved to {pi_filepath}")
 
 
-
 def bayes_uncertainty_analysis(tr_items, msc_items, final_teacher_samples, output_dir, timestamp):
     """
     Takes the final teacher samples and runs a full uncertainty analysis,
@@ -175,11 +252,11 @@ def format_x_axis(ax, total_iterations):
 def plot_tr_GNLL(results_df, output_dir, timestamp):
     fig, ax = plt.subplots(figsize=(10, 6))
     tsteps = results_df['t']
-    smoothing_window = 5
+    smoothing_window = 10
     train_nll_smooth = results_df['tr_nll_train'].rolling(window=smoothing_window).mean()
 
     ax.plot(tsteps, results_df['tr_nll_val'], marker='o', linestyle='--', color="blue", label='Teacher NLL Validation')
-    ax.plot(tsteps, train_nll_smooth, marker='o', linestyle='-', color="pink", label=f'Teacher NLL Train (Smoothed, w={smoothing_window})')
+    ax.plot(tsteps, train_nll_smooth, marker='o', linestyle='-', color="pink", label=f'Teacher NLL Train (Smoothed)')
     # ax.plot(tsteps, results_df['tr_nll_train'], linestyle='-', color="red", label='Teacher NLL Train')
 
     ax.set_title(f"Teacher NLL Performance")
@@ -206,16 +283,14 @@ def plot_gnll_comparison(results_df, output_dir, timestamp):
         print("Notice: Missing student or teacher GNLL data, skipping comparison plot.")
         return
 
-    # 2. Create the plot
     fig, ax = plt.subplots(figsize=(10, 6))
     
     ax.plot(results_df['t'], results_df[st_metric], marker='o', linestyle='-', color='purple', label='Student Validation NLL')
     ax.plot(results_df['t'], results_df[tr_metric], marker='x', linestyle='--', color='blue', label='Teacher Validation NLL')
 
-    # 3. Add titles and labels for clarity
-    ax.set_title("Student vs. Teacher Validation Performance (NLL)")
+    ax.set_title("Teacher Vs. Student Validation")
     ax.set_xlabel("Training Iterations (t)")
-    ax.set_ylabel("Average NLL")
+    ax.set_ylabel("NLL")
     
     total_iterations = results_df['t'].max()
     format_x_axis(ax, total_iterations)
@@ -316,15 +391,22 @@ def create_and_save_plots(results_data, hp_dict, output_dir, timestamp):
     student_mode = hp_dict.get('student_mode')
 
     print(f"--- Generating plots for student_mode: '{student_mode}' ---")
-
     plot_tr_GNLL(results_df, output_dir, timestamp)
         
     # 2. Conditionally plot the relevant student metric based on the mode
     if student_mode == 'mean_and_variance':
         print("Plotting Student GNLL...")
         plot_gnll_comparison(results_df, output_dir, timestamp)
-        print("Plotting KL Divergence...")
-        plot_kl_divergence(results_df, output_dir, timestamp)
+
+        print("Plotting Student Total Training Loss (MSE)...")
+        plot_student_total_loss(results_df, output_dir, timestamp)
+
+        print("Plotting Student Mean MSE Training Loss...")
+        plot_student_mean_mse_train(results_df, output_dir, timestamp)
+
+        print("Plotting Student Variance MSE Training Loss...")
+        plot_student_variance_mse_train(results_df, output_dir, timestamp)
+
     
     elif student_mode == 'variance_only':
         print("Plotting Student Variance MSE...")
@@ -438,6 +520,7 @@ def save_results_to_csv_bayers(results_data, hp, timestamp, output_dir):
         f"tau={hp['tau']}_"
         f"a={hp['tr_poly_a']:.1e}_"
         f"b={hp['tr_poly_b']}_"
+        f"val_step={hp['val_step']}"
         f"g={hp['tr_poly_gamma']}.csv"
     )
 

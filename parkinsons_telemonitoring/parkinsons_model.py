@@ -9,6 +9,7 @@ import torch.distributions as D
 import collections
 import random
 import numpy as np
+import pandas as pd
 
 class FFC_Regression_Parkinsons(nn.Module):
 
@@ -89,28 +90,37 @@ class MeanVarianceStudentTrainer(BaseStudentTrainer):
     """Trains the student to match both the mean and variance of the teacher."""
     def __init__(self, student_network, student_optimizer):
         super().__init__(student_network, student_optimizer)
-        self.criterion = D.kl.kl_divergence
+        # self.criterion = D.kl.kl_divergence
+        self.criterion = nn.MSELoss()
+        self.lambda_weight = 1.0
 
     def train_step(self, teacher_network, inputs):
         self.student_network.train()
         
-        #get predictions
-        with torch.no_grad():
-            teacher_mean, teacher_log_var = teacher_network(inputs)        
-        student_mean, student_log_var = self.student_network(inputs)
+        with torch.no_grad(): 
+            teacher_mean, teacher_log_var = teacher_network(inputs)         
+        student_mean, student_log_var = self.student_network(inputs) 
         
-        #get loss function
-        student_dist = D.Normal(student_mean, torch.exp(student_log_var).sqrt())
-        teacher_dist = D.Normal(teacher_mean, torch.exp(teacher_log_var).sqrt())
-        kl_div_per_element = self.criterion(student_dist, teacher_dist)
-        loss = kl_div_per_element.sum()
+        #stjde tloss function is kl_divergence
+        # student_dist = D.Normal(student_mean, torch.exp(student_log_var).sqrt())
+        # teacher_dist = D.Normal(teacher_mean, torch.exp(teacher_log_var).sqrt())
+        # kl_div_per_element = self.criterion(student_dist, teacher_dist)
+        # loss = kl_div_per_element.sum()
+
+        loss_mean = self.criterion(student_mean, teacher_mean)
+        loss_var = self.criterion(student_log_var, teacher_log_var)
+        total_loss = loss_mean + self.lambda_weight * loss_var
 
         #optimize
         self.optimizer.zero_grad()
-        loss.backward()
+        total_loss.backward()
         self.optimizer.step()
 
-        return loss.item()
+        return {
+            'total_loss': total_loss.item(),
+            'mse_mean': loss_mean.item(),
+            'mse_var': loss_var.item()
+        }
 
 class MeanOnlyStudentTrainer(BaseStudentTrainer):
     """Trains the student to match only the mean of the teacher."""
@@ -260,6 +270,7 @@ def validate_student_gnll(model, validation_loader, criterion, device, verbose=F
 
 
 def tr_validate_network(network, weight_samples, val_loader, criterion, device):
+    """Calculates the Gaussian NLL for a set of Weights from the teacher model."""
     network.eval()
     all_means_across_samples = []
     all_vars_across_samples = []
@@ -276,78 +287,72 @@ def tr_validate_network(network, weight_samples, val_loader, criterion, device):
         with torch.no_grad():
             for data, _ in val_loader:
                 data = data.to(device)
-
-                # ---                
+                
                 mean, log_var = network(data)
                 var = torch.exp(log_var)                
                 batch_means.append(mean)
                 batch_vars.append(var)
-                # ---                
         
         all_means_across_samples.append(torch.cat(batch_means))
         all_vars_across_samples.append(torch.cat(batch_vars))
         
-    # Stack tensors to create a [num_samples, num_data_points, 1] tensor
+    #[num_samples, num_data_points, 1] 
     avg_means = torch.stack(all_means_across_samples, dim=0)
     avg_vars = torch.stack(all_vars_across_samples, dim=0)
 
     #get the average mand and vars    
     avg_mean = torch.mean(avg_means, dim=0)
     avg_var = torch.mean(avg_vars, dim=0)
-    # ---
+    avg_mean, avg_var = avg_mean.to(device), avg_var.to(device)
 
     # Ensure all tensors are on the same device
-    avg_mean, avg_var = avg_mean.to(device), avg_var.to(device)
-    
     total_nll = criterion(input=avg_mean, target=all_targets, var=avg_var)
     avg_nll_per_sample = total_nll.item() / len(all_targets)
-    # ---
 
     return avg_nll_per_sample
 
-def validate_kl_divergence(teacher_network, student_network, weight_samples, val_loader, device):
-    """
-    Calculates the KL divergence between the student's predictive distribution and
-    the teacher's Bayesian Model Averaged (BMA) predictive distribution on the
-    entire validation set.
-    """
-    teacher_network.eval()
-    student_network.eval()
+# def validate_kl_divergence(teacher_network, student_network, weight_samples, val_loader, device):
+#     """
+#     Calculates the KL divergence between the student's predictive distribution and
+#     the teacher's predictive distribution on the entire validation set.
+#     """
+#     teacher_network.eval()
+#     student_network.eval()
 
-    all_teacher_means = []
-    all_teacher_vars = []
-    for sample_weights in weight_samples:
-        teacher_network.load_state_dict({k: v.to(device) for k, v in sample_weights.items()})
-        batch_means, batch_vars = [], []
-        with torch.no_grad():
-            for data, _ in val_loader:
-                data = data.to(device)
-                mean, log_var = teacher_network(data)
-                batch_means.append(mean)
-                batch_vars.append(torch.exp(log_var))
+#     all_teacher_means = []
+#     all_teacher_vars = []
+#     for sample_weights in weight_samples:
+#         teacher_network.load_state_dict({k: v.to(device) for k, v in sample_weights.items()})
+#         batch_means, batch_vars = [], []
+#         with torch.no_grad():
+#             for data, _ in val_loader:
+#                 data = data.to(device)
+#                 mean, log_var = teacher_network(data)
+#                 batch_means.append(mean)
+#                 batch_vars.append(torch.exp(log_var))
 
-        all_teacher_means.append(torch.cat(batch_means))
-        all_teacher_vars.append(torch.cat(batch_vars))
+#         all_teacher_means.append(torch.cat(batch_means))
+#         all_teacher_vars.append(torch.cat(batch_vars))
     
-    avg_teacher_mean = torch.mean(torch.stack(all_teacher_means), dim=0)
-    avg_teacher_var = torch.mean(torch.stack(all_teacher_vars), dim=0)
-    teacher_dist = D.Normal(avg_teacher_mean, avg_teacher_var.sqrt())
+#     avg_teacher_mean = torch.mean(torch.stack(all_teacher_means), dim=0)
+#     avg_teacher_var = torch.mean(torch.stack(all_teacher_vars), dim=0)
+#     teacher_dist = D.Normal(avg_teacher_mean, avg_teacher_var.sqrt())
 
-    student_means, student_vars = [], []
-    with torch.no_grad():
-        for data, _ in val_loader:
-            data = data.to(device)
-            mean, log_var = student_network(data)
-            student_means.append(mean)
-            student_vars.append(torch.exp(log_var))
+#     student_means, student_vars = [], []
+#     with torch.no_grad():
+#         for data, _ in val_loader:
+#             data = data.to(device)
+#             mean, log_var = student_network(data)
+#             student_means.append(mean)
+#             student_vars.append(torch.exp(log_var))
     
-    student_mean = torch.cat(student_means)
-    student_var = torch.cat(student_vars)
-    student_dist = D.Normal(student_mean, student_var.sqrt())
+#     student_mean = torch.cat(student_means)
+#     student_var = torch.cat(student_vars)
+#     student_dist = D.Normal(student_mean, student_var.sqrt())
 
-    kl_div = D.kl.kl_divergence(student_dist, teacher_dist).sum()
+#     kl_div = D.kl.kl_divergence(student_dist, teacher_dist).sum()
     
-    return kl_div.item() / len(val_loader.dataset)
+#     return kl_div.item() / len(val_loader.dataset)
 
 def tr_test_train(network, weight_samples, inputs, labels, criterion, device):
     """
@@ -386,8 +391,7 @@ def bayesian_distillation_parkin(tr_items, st_items, msc_items, tr_hyp_par, val_
     results = []
     st_losses = [] 
 
-    W_len = 1000
-    sample_sz = 100
+    W_len, sample_sz = 1000, 100
     tr_W_samples = collections.deque(maxlen=W_len)
 
     bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
@@ -414,35 +418,42 @@ def bayesian_distillation_parkin(tr_items, st_items, msc_items, tr_hyp_par, val_
             loss_val = st_trainer.train_step(teacher_network=tr_network,inputs=inputs)
             st_losses.append(loss_val)
 
-        #validate teacher and student
+
         if t >= B and (t % val_step == 0):
             if len(tr_W_samples) < W_len:
                     continue 
 
             T.set_postfix_str("VALIDATING...")
 
+            st_mse_val, st_nll_val = float('nan'), float('nan')
+            st_total_loss_train, st_mse_mean_train, st_mse_var_train = float('nan'), float('nan'), float('nan')
+
             with torch.no_grad():       
-                st_trainer.student_network.eval()
-                tr_network.eval()  
                 tr_W_samples_rng = random.sample(list(tr_W_samples), sample_sz)
                 tr_nll_val = tr_validate_network(tr_network, tr_W_samples_rng, tr_loader_valid, eval_criterion, device)
                 tr_nll_train = tr_test_train(tr_network, tr_W_samples_rng, inputs, labels, eval_criterion, device)
 
-
                 student_mode_name = st_trainer.__class__.__name__
-                st_mse_val = float('nan')
-                st_nll_val = float('nan')
-                kl_divergence = float('nan')
                 
                 if student_mode_name == 'MeanVarianceStudentTrainer':
                     st_nll_val = validate_student_gnll(st_trainer.student_network, tr_loader_valid, eval_criterion, device)
-                    kl_divergence = validate_kl_divergence(tr_network, st_trainer.student_network, tr_W_samples_rng, tr_loader_valid, device)
-                else:
+                    st_losses_df = pd.DataFrame(st_losses)
+                    st_total_loss_train = st_losses_df['total_loss'].iloc[-1]
+                    # st_mse_mean_train = st_losses_df['mse_mean'].mean()
+                    st_mse_mean_train = st_losses_df['mse_mean'].iloc[-1]
+                    st_mse_var_train = st_losses_df['mse_var'].iloc[-1]
+
+                elif student_mode_name == 'MeanOnlyStudentTrainer':
                     st_mse_val = validate_student_mse(st_trainer.student_network, tr_loader_valid, device)
+                    # st_mse_mean_train = np.mean(st_losses)
+                    st_mse_mean_train = st_losses[-1]
+
+                elif student_mode_name == 'VarianceOnlyStudentTrainer':
+                    st_mse_val = validate_student_mse(st_trainer.student_network, tr_loader_valid, device)
+                    # st_mse_var_train = np.mean(st_losses)
+                    st_mse_var_train = st_losses[-1]
               
                 
-                tr_cur_nll_val = tr_nll_val
-                st_cur_nll_val = st_nll_val if not np.isnan(st_nll_val) else st_mse_val            
 
             results.append({
                 't': t + 1,
@@ -450,8 +461,11 @@ def bayesian_distillation_parkin(tr_items, st_items, msc_items, tr_hyp_par, val_
                 'tr_nll_val': tr_nll_val,
                 'st_nll_val': st_nll_val,       # Will be NaN for MSE modes 
                 'st_mse_val': st_mse_val,       # Will be NaN for GNLL mode
-                'kl_divergence': kl_divergence, # Will be NaN for MSE modes
+                'st_total_loss_train': st_total_loss_train,
+                'st_mse_mean_train': st_mse_mean_train,
+                'st_mse_var_train': st_mse_var_train,
             })
+            st_losses = []
             tr_network.train()
 
     final_teacher_samples = random.sample(list(tr_W_samples), 100)

@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------- 
 # NB! Adjust for wallclock time when adjusting iterations!
 # --------------------------------------------------------------------- 
-#BSUB -W 13:00
+#BSUB -W 09:00
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
 #BSUB -o experiment/tmp/single_runs/single_run_%J.out
@@ -15,10 +15,15 @@
 
 # --- Set the specific hyperparameters for this test run ---
 ITERATIONS=1000000
-TAU_PARAM=15
-POLY_A_PARAM=5.00e-6
-POLY_B_PARAM=0
-POLY_GAMMA_PARAM=0
+TAU_PARAM=500
+# For constant LR
+# POLY_A_PARAM=5.00e-6 
+# POLY_B_PARAM=0
+# POLY_GAMMA_PARAM=0
+# For poly decay
+POLY_A_PARAM=5.00e-6 
+POLY_B_PARAM=1000
+POLY_GAMMA_PARAM=0.55
 BATCH_SIZE=100
 VAL_STEP=5000
 

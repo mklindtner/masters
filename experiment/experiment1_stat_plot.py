@@ -107,9 +107,7 @@ def plot_teacher_performance(df, hp, output_dir, timestamp):
     plt.close()
     print(f"Teacher performance plot saved to {os.path.join(output_dir, filename)}")
 
-# --- Helper Function 2: Distillation NLL Comparison ---
 def plot_distillation_nll(df, hp, output_dir, timestamp):
-    """Plots and compares the validation NLL of the teacher and student."""
     if 'st_nll_val' not in df.columns: 
         print("Student NLL data not found, skipping distillation plot.")
         return
@@ -147,10 +145,6 @@ def plot_distillation_nll(df, hp, output_dir, timestamp):
 
 
 def plot_results_bayers(results_data, timestamp, hp, output_dir=path_exp_fig_sens_figs):
-    """
-    Main plotting function that calls specialized helper functions
-    to generate a suite of plots for the experiment.
-    """
     if not results_data:
         print("No data available to plot.")
         return

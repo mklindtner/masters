@@ -26,7 +26,8 @@ def main(args):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     create_and_save_plots(results, hp_dict, args.output_dir, timestamp)
-    bayes_uncertainty_analysis(tr_items, msc_items, tr_samples, args.output_dir, timestamp)
+    # bayes_uncertainty_analysis(tr_items, msc_items, tr_samples, args.output_dir, timestamp)
+    save_results_to_csv_bayers(results, hp_dict, timestamp, args.output_dir)
 
 
 

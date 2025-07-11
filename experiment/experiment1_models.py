@@ -13,7 +13,7 @@ import collections
 import random
 
 
-
+#Old case
 class SGLD(optim.Optimizer):
     def __init__(self, params, lr=1e-3, weight_decay=0, N=1):
         if lr < 0.0:
@@ -121,13 +121,14 @@ def validate_network(model, validation_loader, criterion, device, verbose=True):
 
 
 # Equation (9) from "posterior distillation"
+# Unused because never did online learning
 def U_s(teacher_model, inputs):
     teacher_model.eval()
     with torch.no_grad():
         targets = teacher_model(inputs)
     return targets
 
-
+#depcrecated
 def distil_MNIST(tr_items, st_items, msc_list, T_total=1e10, verbose=True):    
     tr_optim, tr_network, tr_loader_train, tr_loader_valid = tr_items
     # st_network, st_optim, st_scheduler, U, tr_st_criterion = st_items
@@ -260,15 +261,11 @@ def train_teacher_network(tr_optim, tr_network, T_epochs, tr_loader_train, tr_lo
 
 
 def validate_network_bayesian(network, weight_samples, val_loader, device):
-    """
-    Performs a Bayesian Model Average to evaluate the model.
-    This version has a corrected check for the all_targets tensor.
-    """
     network.eval()
     all_predictions = []
     all_targets = None
 
-    sample_loop = tqdm(weight_samples, desc="  Validating Teacher (BMA)", leave=False)
+    sample_loop = tqdm(weight_samples, desc="  Validating Teacher", leave=False)
 
 
     for sample_state_dict in sample_loop:
@@ -420,19 +417,12 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T
     lr_init, decay_gamma, lr_b = tr_hyp_par
     train_iterator = itertools.cycle(tr_loader_train)
     results = []
-
-
-
-    #So I dont run out of memory on the GPU
     tr_W_samples = collections.deque(maxlen=1000)
 
     bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
     print(f"--- Starting Distillation Process for {T_total} steps ---")
     T = tqdm(range(T_total), desc="Total Steps", disable=not verbose, bar_format=bar_format)
     
-
-    # tr_criterion_nll = nn.CrossEntropyLoss(reduction='mean')
-
     tr_cur_nll_val = float('inf') # Use infinity as a placeholder
     st_cur_nll_val = float('inf')
 
@@ -465,6 +455,7 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T
             with torch.no_grad():
                 teacher_logits = tr_network(inputs)
 
+            #From bayesina Darkknowledge
             # noise_std = 0.001
             # noise = torch.randn_like(inputs) * noise_std
             # noisy_inputs = inputs + noise
@@ -475,7 +466,6 @@ def bayesian_distillation(tr_items, st_items, msc_items, tr_hyp_par, val_step, T
             tr_targets = F.softmax(teacher_logits, dim=-1)
             st_log_probs = F.log_softmax(student_logits, dim=-1)
             
-            #Loss
             st_loss = -torch.sum(tr_targets * st_log_probs) / student_logits.size(0)
             
             st_optim.zero_grad()

@@ -1,9 +1,9 @@
 #!/bin/sh
-#BSUB -q gpuv100
+#BSUB -q gpua100
 #BSUB -J parkinSingle
 #BSUB -n 4
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -W 11:00
+#BSUB -W 07:00
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -o parkinsons_telemonitoring/SGLD_single_run/gpu_%J.out
@@ -11,12 +11,12 @@
 
 # ------------------
 ITERATIONS=1000000
-TAU_PARAM=10.0
-POLY_A_PARAM=5.00e-6
+TAU_PARAM=15.0
+POLY_A_PARAM=6.00e-6 #5.00e-6 prev
 POLY_B_PARAM=1000.0
-POLY_GAMMA_PARAM=0.55
+POLY_GAMMA_PARAM=0.56
 ST_TYPE="mean_and_variance"
-VAL_STEP=10000
+VAL_STEP=5000
 
 RUN_NAME="T${ITERATIONS}_tau${TAU_PARAM}_a${POLY_A_PARAM}_b${POLY_B_PARAM}_g${POLY_GAMMA_PARAM}"
 OUTPUT_DIR="parkinsons_telemonitoring/SGLD_single_run/$RUN_NAME"
@@ -43,8 +43,8 @@ python -m parkinsons_telemonitoring.parkinsons_training \
     --tr_poly_a $POLY_A_PARAM \
     --tr_poly_b $POLY_B_PARAM \
     --tr_poly_gamma $POLY_GAMMA_PARAM \
-    --student_model $ST_TYPE \
-    --val_step $VAL_STEP
+    --student_mode $ST_TYPE \
+    --val_step $VAL_STEP \
     --output_dir $OUTPUT_DIR
 
 

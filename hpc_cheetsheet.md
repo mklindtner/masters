@@ -69,8 +69,8 @@ voltash, sxm2sh (pref), a100sh
 - in "run and debug" click Green arrow
 
 # Normally
-- python -m parkinsons_telemonitoring.parkinsons_training --student_mode "mean_and_variance" --iterations 2000
 - python -m experiment.experiment1_sensitivity_study
+- python -m parkinsons_telemonitoring.parkinsons_training --student_mode "mean_and_variance" --iterations 20000 --val_step=1000 --B=0
 
 # Potential problems
 - When activate the virtual environemnet using alias "mml" vscode crashes when running import torch
