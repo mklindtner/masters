@@ -65,6 +65,7 @@ parkinsons_telemonitoring/SGLD_single_run/
 parkinsons_telemonitoring/SGLD_sensitivity/
 !parkinsons_telemonitoring/SGLD_ablation/.gitkeep
 parkinsons_telemonitoring/var_const/singlevar_runs/
+parkinsons_telemonitoring/keep/
 
 
 
