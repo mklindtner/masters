@@ -255,8 +255,8 @@ def plot_tr_GNLL(results_df, output_dir, timestamp):
     smoothing_window = 10
     train_nll_smooth = results_df['tr_nll_train'].rolling(window=smoothing_window).mean()
 
-    ax.plot(tsteps, results_df['tr_nll_val'], marker='o', linestyle='--', color="blue", label='Teacher NLL Validation')
-    ax.plot(tsteps, train_nll_smooth, marker='o', linestyle='-', color="pink", label=f'Teacher NLL Train (Smoothed)')
+    ax.plot(tsteps, results_df['tr_nll_val'], marker='o', linestyle='-', color="blue", label='Teacher NLL Validation')
+    ax.plot(tsteps, train_nll_smooth, marker='o', linestyle='--', color="pink", label=f'Teacher NLL Train (Smoothed w={smoothing_window})')
     # ax.plot(tsteps, results_df['tr_nll_train'], linestyle='-', color="red", label='Teacher NLL Train')
 
     ax.set_title(f"Teacher NLL Performance")
